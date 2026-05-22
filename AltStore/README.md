@@ -24,3 +24,12 @@ Une fois que Codemagic a généré votre fichier `NeticAI.ipa`, vous devez :
 3. Ajouter le fichier `NeticAI.ipa` en pièce jointe de cette release.
 
 Dès que le fichier est en ligne, AltStore pourra le télécharger et l'installer sur votre iPhone.
+
+## Icône sur l'écran d'accueil
+
+Si l'icône reste blanche après installation :
+
+1. **Supprimez** complètement l'app, réinstallez la dernière release GitHub.
+2. Dans AltStore (version récente) : onglet **Mes apps** → appui long sur **Netic AI** → **Changer l'icône** → choisir `icon.png` depuis le dépôt.
+
+Les builds récents incluent `Assets.car` + fichiers `AppIcon*.png` dans le `.ipa` (requis pour l'affichage sur l'écran d'accueil).
