@@ -17,5 +17,5 @@ targets:
         NSPhotoLibraryUsageDescription: "Netic a besoin d'accéder à vos photos pour les analyser."
         UIBackgroundModes: [audio]
         ITSAppUsesNonExemptEncryption: false
-        CFBundleShortVersionString: "1.0.0"
+        CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"

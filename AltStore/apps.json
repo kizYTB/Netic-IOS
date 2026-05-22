@@ -18,7 +18,7 @@
       "category": "utilities",
       "versions": [
         {
-          "version": "1.0.0",
+          "version": "1.0",
           "buildVersion": "1",
           "date": "2026-05-22T00:00:00Z",
           "localizedDescription": "Première version de Netic AI.",
