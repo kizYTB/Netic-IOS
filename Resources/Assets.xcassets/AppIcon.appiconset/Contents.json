@@ -1,10 +1,10 @@
 {
   "images" : [
     {
-      "filename" : "icon.png",
       "idiom" : "universal",
       "platform" : "ios",
-      "scale" : "1x"
+      "scale" : "1x",
+      "filename" : "icon.png"
     }
   ],
   "info" : {
