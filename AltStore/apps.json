@@ -1,5 +1,7 @@
 {
   "name": "Netic AI Repository",
+  "identifier": "fr.neticai.repo",
+  "sourceURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/AltStore/apps.json",
   "subtitle": "L'application officielle Netic AI",
   "description": "Retrouvez ici les applications officielles Netic.",
   "iconURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/Resources/Assets.xcassets/AppIcon.appiconset/icon.png",
@@ -18,15 +20,22 @@
         {
           "version": "1.0.0",
           "buildVersion": "1",
-          "date": "2026-05-22",
+          "date": "2026-05-22T00:00:00Z",
           "localizedDescription": "Première version de Netic AI.",
           "downloadURL": "https://github.com/kizYTB/Netic-IOS/releases/latest/download/NeticAI.ipa",
-          "size": 15000000
+          "size": 15000000,
+          "minOSVersion": "16.0"
         }
       ],
       "appPermissions": {
-        "entitlements": [],
-        "privacy": {}
+        "entitlements": [
+          "UIBackgroundModes"
+        ],
+        "privacy": {
+          "NSCameraUsageDescription": "Netic a besoin de l'appareil photo pour analyser vos images.",
+          "NSMicrophoneUsageDescription": "Netic a besoin du microphone pour la transcription vocale.",
+          "NSPhotoLibraryUsageDescription": "Netic a besoin d'accéder à vos photos pour les analyser."
+        }
       }
     }
   ]
