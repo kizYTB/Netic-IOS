@@ -1,28 +1,33 @@
 {
   "name": "Netic AI Repository",
-  "identifier": "fr.neticai.repo",
-  "sourceURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/AltStore/apps.json",
-  "subtitle": "Applications officielles Netic",
-  "description": "Le repo officiel de Netic AI.",
+  "subtitle": "L'application officielle Netic AI",
+  "description": "Retrouvez ici les applications officielles Netic.",
   "iconURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/Resources/Assets.xcassets/AppIcon.appiconset/icon.png",
+  "tintColor": "#007AFF",
   "apps": [
     {
       "name": "Netic AI",
       "bundleIdentifier": "fr.neticai.NeticAI",
       "developerName": "Netic",
       "subtitle": "Votre assistant IA personnel",
-      "localizedDescription": "L'application officielle iOS pour Netic AI.",
+      "localizedDescription": "L'application officielle iOS pour Netic AI. Discutez avec votre IA, analysez des images et utilisez la transcription vocale.",
       "iconURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/Resources/Assets.xcassets/AppIcon.appiconset/icon.png",
       "tintColor": "#007AFF",
+      "category": "utilities",
       "versions": [
         {
           "version": "1.0.0",
-          "date": "2026-05-22T00:00:00Z",
+          "buildVersion": "1",
+          "date": "2026-05-22",
           "localizedDescription": "Première version de Netic AI.",
           "downloadURL": "https://github.com/kizYTB/Netic-IOS/releases/latest/download/NeticAI.ipa",
           "size": 15000000
         }
-      ]
+      ],
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {}
+      }
     }
   ]
 }
