@@ -15,6 +15,7 @@ struct ContentView: View {
 
             WebView(url: url, webViewState: webViewState)
                 .id(webViewId)
+                .ignoresSafeArea(.all)
                 .opacity(networkMonitor.isConnected ? 1 : 0)
 
             if webViewState.isLoading && networkMonitor.isConnected {

@@ -161,6 +161,8 @@ struct WebView: UIViewRepresentable {
             meta.setAttribute('content',
                 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
         }
+        document.documentElement.style.cssText = 'margin:0;padding:0;width:100%;height:100%;min-height:100dvh;';
+        document.body.style.cssText = 'margin:0;padding:0;width:100%;min-height:100dvh;overflow-x:hidden;';
         window.dispatchEvent(new Event('resize'));
     })();
     """
