@@ -1,0 +1,19 @@
+name: NeticAI
+options:
+  bundleIdPrefix: fr.neticai
+targets:
+  NeticAI:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources: [Sources]
+    resources: [Resources]
+    info:
+      path: Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSCameraUsageDescription: "Netic a besoin de l'appareil photo pour analyser vos images."
+        NSMicrophoneUsageDescription: "Netic a besoin du microphone pour la transcription vocale."
+        NSPhotoLibraryUsageDescription: "Netic a besoin d'accéder à vos photos pour les analyser."
+        UIBackgroundModes: [audio]
+        ITSAppUsesNonExemptEncryption: false
