@@ -5,8 +5,8 @@ workflows:
     environment:
       xcode: latest
       vars:
-        GITHUB_TOKEN: $GITHUB_TOKEN   # À définir dans Codemagic > Environment variables
-        RELEASE_TAG: "1.0.0"          # Change ce tag à chaque version
+        GITHUB_TOKEN: $GITHUB_TOKEN
+        RELEASE_TAG: "1.0.0"
         RELEASE_TITLE: "Netic AI"
     scripts:
       - name: Install XcodeGen
@@ -17,7 +17,7 @@ workflows:
 
       - name: Build iOS app (.ipa)
         script: |
-          cat << 'EOF' > Info.plist
+          cat << 'PLIST' > Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -54,7 +54,7 @@ workflows:
               </array>
           </dict>
           </plist>
-          EOF
+          PLIST
 
           xcodegen generate
 
@@ -75,10 +75,10 @@ workflows:
 
       - name: Supprimer et recréer la release GitHub
         script: |
-          # Authentifier gh avec le token
-          echo "$GITHUB_TOKEN" | gh auth login --with-token
+          # Configurer git pour utiliser gh comme credential helper
+          gh auth setup-git
 
-          # Supprime la release existante si elle existe
+          # Supprime la release + tag distant si existants
           gh release delete "$RELEASE_TAG" \
             --repo "kizYTB/Netic-IOS" \
             --yes \
@@ -86,14 +86,12 @@ workflows:
 
           sleep 3
 
-          # Supprime le tag local s'il existe déjà
+          # Supprime le tag local s'il existe
           git tag -d "$RELEASE_TAG" 2>/dev/null || true
 
-          # Recrée le tag sur le commit courant
+          # Recrée le tag et push via gh (authentifié)
           git tag "$RELEASE_TAG"
-
-          # Push le tag avec le token dans l'URL
-          git push "https://$GITHUB_TOKEN@github.com/kizYTB/Netic-IOS.git" "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
 
           # Crée la nouvelle release avec l'IPA
           gh release create "$RELEASE_TAG" \
