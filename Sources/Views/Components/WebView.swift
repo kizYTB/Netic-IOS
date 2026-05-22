@@ -1,53 +1,11 @@
 import SwiftUI
 import WebKit
 
-/// Conteneur UIKit : force la WKWebView à occuper 100 % de l'écran (fix SwiftUI UIViewRepresentable).
-final class WebViewContainer: UIView {
-    let webView: WKWebView
-
-    init(webView: WKWebView) {
-        self.webView = webView
-        super.init(frame: .zero)
-        backgroundColor = webView.backgroundColor
-        clipsToBounds = true
-
-        webView.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(webView)
-
-        NSLayoutConstraint.activate([
-            webView.topAnchor.constraint(equalTo: topAnchor),
-            webView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            webView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            webView.trailingAnchor.constraint(equalTo: trailingAnchor)
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        resetScrollInsets()
-    }
-
-    func resetScrollInsets() {
-        let scrollView = webView.scrollView
-        scrollView.contentInset = .zero
-        scrollView.scrollIndicatorInsets = .zero
-        if #available(iOS 13.0, *) {
-            scrollView.automaticallyAdjustsScrollIndicatorInsets = false
-        }
-        scrollView.contentInsetAdjustmentBehavior = .never
-    }
-}
-
 struct WebView: UIViewRepresentable {
     let url: URL
     @ObservedObject var webViewState: WebViewState
 
-    func makeUIView(context: Context) -> WebViewContainer {
+    func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         let userContentController = WKUserContentController()
 
@@ -76,6 +34,14 @@ struct WebView: UIViewRepresentable {
         webView.scrollView.minimumZoomScale = 1.0
         webView.scrollView.maximumZoomScale = 1.0
         webView.scrollView.zoomScale = 1.0
+        
+        // Force la WebView à ignorer sa propre safe area insets
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.contentInset = .zero
+        webView.scrollView.scrollIndicatorInsets = .zero
+        if #available(iOS 13.0, *) {
+            webView.scrollView.automaticallyAdjustsScrollIndicatorInsets = false
+        }
 
         if #available(iOS 15.0, *) {
             webView.underPageBackgroundColor = webView.backgroundColor
@@ -87,21 +53,15 @@ struct WebView: UIViewRepresentable {
 
         webView.allowsBackForwardNavigationGestures = true
 
-        let container = WebViewContainer(webView: webView)
-        container.resetScrollInsets()
-
-        context.coordinator.container = container
         context.coordinator.webView = webView
-        return container
+        return webView
     }
 
-    func updateUIView(_ container: WebViewContainer, context: Context) {
-        context.coordinator.container = container
-        context.coordinator.webView = container.webView
-        container.resetScrollInsets()
+    func updateUIView(_ uiView: WKWebView, context: Context) {
+        context.coordinator.webView = uiView
 
-        if container.webView.url == nil {
-            container.webView.load(URLRequest(url: url))
+        if uiView.url == nil {
+            uiView.load(URLRequest(url: url))
         }
     }
 
@@ -169,7 +129,6 @@ struct WebView: UIViewRepresentable {
 
     class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         var parent: WebView
-        weak var container: WebViewContainer?
         weak var webView: WKWebView?
 
         init(_ parent: WebView) {
@@ -186,7 +145,10 @@ struct WebView: UIViewRepresentable {
             webView.scrollView.zoomScale = 1.0
             webView.scrollView.minimumZoomScale = 1.0
             webView.scrollView.maximumZoomScale = 1.0
-            container?.resetScrollInsets()
+            
+            // Re-force insets in case navigation changed it
+            webView.scrollView.contentInset = .zero
+            webView.scrollView.scrollIndicatorInsets = .zero
 
             webView.evaluateJavaScript(WebView.layoutFixScript, completionHandler: nil)
 
@@ -262,3 +224,4 @@ struct WebView: UIViewRepresentable {
         }
     }
 }
+
