@@ -1,24 +1,42 @@
 name: NeticAI
+
 options:
   bundleIdPrefix: fr.neticai
+
 targets:
   NeticAI:
     type: application
     platform: iOS
     deploymentTarget: "16.0"
-    sources: [Sources]
-    resources: [Resources]
+
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: fr.neticai.NeticAI
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+    sources:
+      - Sources
+
+    resources:
+      - Resources
+
     info:
       path: Info.plist
       properties:
         UILaunchScreen: {}
+
         NSCameraUsageDescription: "Netic a besoin de l'appareil photo pour analyser vos images."
         NSMicrophoneUsageDescription: "Netic a besoin du microphone pour la transcription vocale."
         NSPhotoLibraryUsageDescription: "Netic a besoin d'accéder à vos photos pour les analyser."
-        UIBackgroundModes: [audio]
+
+        UIBackgroundModes:
+          - audio
+
         ITSAppUsesNonExemptEncryption: false
+
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
+
         CFBundleIdentifier: "fr.neticai.NeticAI"
         CFBundleName: "Netic AI"
+
         CFBundleIconName: "AppIcon"
