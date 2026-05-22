@@ -4,12 +4,14 @@
       "filename" : "icon.png",
       "idiom" : "universal",
       "platform" : "ios",
-      "scale" : "1x",
-      "size" : "1024x1024"
+      "scale" : "1x"
     }
   ],
   "info" : {
-    "author" : "Kiz",
+    "author" : "xcode",
     "version" : 1
+  },
+  "properties" : {
+    "pre-rendered" : true
   }
 }
