@@ -78,32 +78,7 @@ struct WebView: UIViewRepresentable {
                 meta.setAttribute('name', 'viewport');
                 (document.head || document.documentElement).appendChild(meta);
             }
-            meta.setAttribute('content',
-                'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
-
-            var style = document.getElementById('netic-ios-layout');
-            if (!style) {
-                style = document.createElement('style');
-                style.id = 'netic-ios-layout';
-                style.textContent = [
-                    'html, body {',
-                    '  margin: 0 !important;',
-                    '  padding: 0 !important;',
-                    '  width: 100% !important;',
-                    '  height: 100% !important;',
-                    '  min-height: 100dvh !important;',
-                    '  overflow-x: hidden !important;',
-                    '  -webkit-text-size-adjust: 100%;',
-                    '}',
-                    ':root {',
-                    '  --netic-safe-top: env(safe-area-inset-top);',
-                    '  --netic-safe-bottom: env(safe-area-inset-bottom);',
-                    '  --netic-safe-left: env(safe-area-inset-left);',
-                    '  --netic-safe-right: env(safe-area-inset-right);',
-                    '}'
-                ].join('\\n');
-                (document.head || document.documentElement).appendChild(style);
-            }
+            meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
         })();
         """
         return WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
@@ -117,17 +92,28 @@ struct WebView: UIViewRepresentable {
     private static let layoutFixScript = """
     (function() {
         var meta = document.querySelector('meta[name="viewport"]');
-        if (!meta) {
-            meta = document.createElement('meta');
-            meta.setAttribute('name', 'viewport');
-            document.head.appendChild(meta);
+        if (meta) {
+            meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
         }
-        meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
         
-        document.documentElement.style.setProperty('min-height', '100dvh', 'important');
-        document.body.style.setProperty('min-height', '100dvh', 'important');
-        document.body.style.setProperty('margin', '0', 'important');
-        document.body.style.setProperty('padding', '0', 'important');
+        function propagateBackground() {
+            var bodyBg = window.getComputedStyle(document.body).backgroundColor;
+            if (bodyBg === 'rgba(0, 0, 0, 0)' || bodyBg === 'transparent') {
+                var root = document.querySelector('#root, #__next, #app, main, .app-container, div[id^="app"]');
+                if (root) {
+                    var rootBg = window.getComputedStyle(root).backgroundColor;
+                    if (rootBg !== 'rgba(0, 0, 0, 0)' && rootBg !== 'transparent') {
+                        document.documentElement.style.backgroundColor = rootBg;
+                        document.body.style.backgroundColor = rootBg;
+                    }
+                }
+            }
+        }
+        
+        propagateBackground();
+        setTimeout(propagateBackground, 300);
+        setTimeout(propagateBackground, 1000);
+        
         window.dispatchEvent(new Event('resize'));
     })();
     """
