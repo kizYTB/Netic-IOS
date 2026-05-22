@@ -24,9 +24,9 @@ struct WebView: UIViewRepresentable {
         webView.uiDelegate = context.coordinator
         webView.customUserAgent = Self.mobileUserAgent
 
-        webView.isOpaque = true
-        webView.backgroundColor = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
-        webView.scrollView.backgroundColor = webView.backgroundColor
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
         webView.scrollView.isOpaque = true
         webView.scrollView.bounces = true
         webView.scrollView.alwaysBounceVertical = true
@@ -117,12 +117,17 @@ struct WebView: UIViewRepresentable {
     private static let layoutFixScript = """
     (function() {
         var meta = document.querySelector('meta[name="viewport"]');
-        if (meta) {
-            meta.setAttribute('content',
-                'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
+        if (!meta) {
+            meta = document.createElement('meta');
+            meta.setAttribute('name', 'viewport');
+            document.head.appendChild(meta);
         }
-        document.documentElement.style.cssText = 'margin:0;padding:0;width:100%;height:100%;min-height:100dvh;';
-        document.body.style.cssText = 'margin:0;padding:0;width:100%;min-height:100dvh;overflow-x:hidden;';
+        meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
+        
+        document.documentElement.style.setProperty('min-height', '100dvh', 'important');
+        document.body.style.setProperty('min-height', '100dvh', 'important');
+        document.body.style.setProperty('margin', '0', 'important');
+        document.body.style.setProperty('padding', '0', 'important');
         window.dispatchEvent(new Event('resize'));
     })();
     """
