@@ -118,6 +118,18 @@ struct WebView: UIViewRepresentable {
             
             print("Navigation vers: \(url.absoluteString)")
             
+            // Si on navigue sur jtheberg mais qu'on n'est plus dans le flux d'authentification (ex: espace client)
+            if url.absoluteString.contains("jtheberg.cloud") || url.absoluteString.contains("jtheberg") {
+                if !url.absoluteString.contains("oauth") && !url.absoluteString.contains("authorize") && !url.absoluteString.contains("login") {
+                    print("Redirection hors de l'auth Jtheberg -> Retour au chat Netic")
+                    if let chatUrl = URL(string: "https://neticai.fr/chat") {
+                        webView.load(URLRequest(url: chatUrl))
+                        decisionHandler(.cancel)
+                        return
+                    }
+                }
+            }
+            
             // Si l'URL tente d'ouvrir une application externe (comme l'app Jtheberg ou un lien profond)
             if !url.absoluteString.hasPrefix("http://") && !url.absoluteString.hasPrefix("https://") {
                 if UIApplication.shared.canOpenURL(url) {
