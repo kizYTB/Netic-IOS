@@ -54,7 +54,6 @@ struct WebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             DispatchQueue.main.async {
                 self.parent.webViewState.isLoading = true
-                self.parent.webViewState.hasError = false
             }
         }
         
@@ -74,19 +73,11 @@ struct WebView: UIViewRepresentable {
         
         private func handleError(_ error: Error) {
             let nsError = error as NSError
-            // Ignorer les erreurs courantes de redirection ou d'annulation
-            if nsError.code == NSURLErrorCancelled { return }
+            print("WebView Error: \(nsError.localizedDescription) (Code: \(nsError.code))")
             
-            // Ignorer les erreurs de schéma non pris en charge (ex: netic:// ou oidc://)
-            if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorUnsupportedURL {
-                print("Ignored unsupported URL scheme: \(error.localizedDescription)")
-                return
-            }
-            
+            // Toujours arrêter le chargement sans bloquer l'UI
             DispatchQueue.main.async {
                 self.parent.webViewState.isLoading = false
-                self.parent.webViewState.hasError = true
-                self.parent.webViewState.errorDescription = error.localizedDescription
             }
         }
         

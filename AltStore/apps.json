@@ -4,7 +4,7 @@
   "sourceURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/AltStore/apps.json",
   "subtitle": "L'application officielle Netic AI",
   "description": "Retrouvez ici les applications officielles Netic.",
-  "iconURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/Resources/Assets.xcassets/AppIcon.appiconset/icon.png",
+  "iconURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/Resources/Assets.xcassets/Logo.imageset/logo.svg",
   "tintColor": "#007AFF",
   "apps": [
     {
@@ -13,7 +13,7 @@
       "developerName": "Netic",
       "subtitle": "Votre assistant IA personnel",
       "localizedDescription": "L'application officielle iOS pour Netic AI. Discutez avec votre IA, analysez des images et utilisez la transcription vocale.",
-      "iconURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/Resources/Assets.xcassets/AppIcon.appiconset/icon.png",
+      "iconURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/Resources/Assets.xcassets/Logo.imageset/logo.svg",
       "tintColor": "#007AFF",
       "category": "utilities",
       "versions": [
