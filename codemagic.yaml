@@ -1,75 +1,99 @@
-workflows:
-  ios-build:
-    name: Netic iOS Build
-    instance_type: mac_mini_m2
-    environment:
-      xcode: latest
-    scripts:
-      - name: Install XcodeGen
-        script: brew install xcodegen
-      - name: Generate Xcode project
-        script: xcodegen generate
-      - name: Build iOS app (.ipa)
-        script: |
-          # Création manuelle d'un Info.plist propre avant la compilation
-          cat << 'EOF' > Info.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleDevelopmentRegion</key>
-              <string>en</string>
-              <key>CFBundleExecutable</key>
-              <string>$(EXECUTABLE_NAME)</string>
-              <key>CFBundleIdentifier</key>
-              <string>fr.neticai.NeticAI</string>
-              <key>CFBundleInfoDictionaryVersion</key>
-              <string>6.0</string>
-              <key>CFBundleName</key>
-              <string>Netic AI</string>
-              <key>CFBundleIconName</key>
-              <string>AppIcon</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-              <key>CFBundleVersion</key>
-              <string>1</string>
-              <key>LSRequiresIPhoneOS</key>
-              <true/>
-              <key>UILaunchScreen</key>
-              <dict/>
-              <key>UIRequiredDeviceCapabilities</key>
-              <array>
-                  <string>armv7</string>
-              </array>
-              <key>UISupportedInterfaceOrientations</key>
-              <array>
-                  <string>UIInterfaceOrientationPortrait</string>
-              </array>
-          </dict>
-          </plist>
-          EOF
-          
-          # Régénère le projet avec le Info.plist forcé
-          xcodegen generate
+- name: Build iOS app (.ipa)
+  script: |
+    cat << 'EOF' > Info.plist
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
 
-          # Build de l'application au format IPA
-          xcodebuild clean build \
-            -project "NeticAI.xcodeproj" \
-            -scheme "NeticAI" \
-            -configuration Release \
-            -sdk iphoneos \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            -archivePath build/NeticAI.xcarchive archive
-            
-          # Packaging de l'archive en IPA
-          mkdir -p build/Payload
-          cp -r build/NeticAI.xcarchive/Products/Applications/NeticAI.app build/Payload/
-          cd build
-          zip -r NeticAI.ipa Payload/
-    artifacts:
-      - build/NeticAI.ipa
-      - /tmp/xcodebuild_logs/*.log
+        <key>CFBundleDevelopmentRegion</key>
+        <string>$(DEVELOPMENT_LANGUAGE)</string>
+
+        <key>CFBundleDisplayName</key>
+        <string>Netic AI</string>
+
+        <key>CFBundleExecutable</key>
+        <string>$(EXECUTABLE_NAME)</string>
+
+        <key>CFBundleIdentifier</key>
+        <string>fr.neticai.NeticAI</string>
+
+        <key>CFBundleInfoDictionaryVersion</key>
+        <string>6.0</string>
+
+        <key>CFBundleName</key>
+        <string>Netic AI</string>
+
+        <key>CFBundlePackageType</key>
+        <string>APPL</string>
+
+        <key>CFBundleShortVersionString</key>
+        <string>1.0</string>
+
+        <key>CFBundleVersion</key>
+        <string>1</string>
+
+        <key>LSRequiresIPhoneOS</key>
+        <true/>
+
+        <key>MinimumOSVersion</key>
+        <string>16.0</string>
+
+        <key>UILaunchStoryboardName</key>
+        <string>LaunchScreen</string>
+
+        <key>UIApplicationSupportsIndirectInputEvents</key>
+        <true/>
+
+        <key>UISupportedInterfaceOrientations</key>
+        <array>
+            <string>UIInterfaceOrientationPortrait</string>
+        </array>
+
+        <key>UISupportedInterfaceOrientations~ipad</key>
+        <array>
+            <string>UIInterfaceOrientationPortrait</string>
+            <string>UIInterfaceOrientationPortraitUpsideDown</string>
+            <string>UIInterfaceOrientationLandscapeLeft</string>
+            <string>UIInterfaceOrientationLandscapeRight</string>
+        </array>
+
+        <key>CFBundleIcons</key>
+        <dict>
+            <key>CFBundlePrimaryIcon</key>
+            <dict>
+                <key>CFBundleIconName</key>
+                <string>AppIcon</string>
+            </dict>
+        </dict>
+
+        <key>NSCameraUsageDescription</key>
+        <string>Netic a besoin de l'appareil photo pour analyser vos images.</string>
+
+        <key>NSMicrophoneUsageDescription</key>
+        <string>Netic a besoin du microphone pour la transcription vocale.</string>
+
+        <key>NSPhotoLibraryUsageDescription</key>
+        <string>Netic a besoin d'accéder à vos photos pour les analyser.</string>
+
+    </dict>
+    </plist>
+    EOF
+
+    xcodegen generate
+
+    xcodebuild clean archive \
+      -project "NeticAI.xcodeproj" \
+      -scheme "NeticAI" \
+      -configuration Release \
+      -sdk iphoneos \
+      CODE_SIGN_IDENTITY="" \
+      CODE_SIGNING_REQUIRED=NO \
+      CODE_SIGNING_ALLOWED=NO \
+      -archivePath build/NeticAI.xcarchive
+
+    mkdir -p build/Payload
+    cp -r build/NeticAI.xcarchive/Products/Applications/NeticAI.app build/Payload/
+
+    cd build
+    zip -r NeticAI.ipa Payload/
