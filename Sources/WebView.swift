@@ -1,11 +1,53 @@
 import SwiftUI
 import WebKit
 
+/// Conteneur UIKit : force la WKWebView à occuper 100 % de l'écran (fix SwiftUI UIViewRepresentable).
+final class WebViewContainer: UIView {
+    let webView: WKWebView
+
+    init(webView: WKWebView) {
+        self.webView = webView
+        super.init(frame: .zero)
+        backgroundColor = webView.backgroundColor
+        clipsToBounds = true
+
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(webView)
+
+        NSLayoutConstraint.activate([
+            webView.topAnchor.constraint(equalTo: topAnchor),
+            webView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            webView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: trailingAnchor)
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        resetScrollInsets()
+    }
+
+    func resetScrollInsets() {
+        let scrollView = webView.scrollView
+        scrollView.contentInset = .zero
+        scrollView.scrollIndicatorInsets = .zero
+        if #available(iOS 13.0, *) {
+            scrollView.automaticallyAdjustsScrollIndicatorInsets = false
+        }
+        scrollView.contentInsetAdjustmentBehavior = .never
+    }
+}
+
 struct WebView: UIViewRepresentable {
     let url: URL
     @ObservedObject var webViewState: WebViewState
 
-    func makeUIView(context: Context) -> WKWebView {
+    func makeUIView(context: Context) -> WebViewContainer {
         let config = WKWebViewConfiguration()
         let userContentController = WKUserContentController()
 
@@ -24,15 +66,13 @@ struct WebView: UIViewRepresentable {
         webView.uiDelegate = context.coordinator
         webView.customUserAgent = Self.mobileUserAgent
 
-        webView.isOpaque = false
+        webView.isOpaque = true
         webView.backgroundColor = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
         webView.scrollView.backgroundColor = webView.backgroundColor
-        webView.scrollView.isOpaque = false
-
+        webView.scrollView.isOpaque = true
         webView.scrollView.bounces = true
         webView.scrollView.alwaysBounceVertical = true
         webView.scrollView.showsHorizontalScrollIndicator = false
-        webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.scrollView.minimumZoomScale = 1.0
         webView.scrollView.maximumZoomScale = 1.0
         webView.scrollView.zoomScale = 1.0
@@ -46,24 +86,28 @@ struct WebView: UIViewRepresentable {
         }
 
         webView.allowsBackForwardNavigationGestures = true
-        webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
+        let container = WebViewContainer(webView: webView)
+        container.resetScrollInsets()
+
+        context.coordinator.container = container
         context.coordinator.webView = webView
-        return webView
+        return container
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        context.coordinator.webView = webView
-        if webView.url == nil {
-            webView.load(URLRequest(url: url))
+    func updateUIView(_ container: WebViewContainer, context: Context) {
+        context.coordinator.container = container
+        context.coordinator.webView = container.webView
+        container.resetScrollInsets()
+
+        if container.webView.url == nil {
+            container.webView.load(URLRequest(url: url))
         }
     }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
-
-    // MARK: - Mobile viewport & safe areas (évite rendu desktop / flou / mal cadré)
 
     private static var viewportScript: WKUserScript {
         let js = """
@@ -82,19 +126,21 @@ struct WebView: UIViewRepresentable {
                 style = document.createElement('style');
                 style.id = 'netic-ios-layout';
                 style.textContent = [
-                    'html { -webkit-text-size-adjust: 100%; height: 100%; }',
-                    'body {',
+                    'html, body {',
                     '  margin: 0 !important;',
-                    '  min-height: 100% !important;',
+                    '  padding: 0 !important;',
                     '  width: 100% !important;',
+                    '  height: 100% !important;',
+                    '  min-height: 100dvh !important;',
                     '  overflow-x: hidden !important;',
-                    '  padding-top: env(safe-area-inset-top) !important;',
-                    '  padding-bottom: env(safe-area-inset-bottom) !important;',
-                    '  padding-left: env(safe-area-inset-left) !important;',
-                    '  padding-right: env(safe-area-inset-right) !important;',
-                    '  box-sizing: border-box !important;',
+                    '  -webkit-text-size-adjust: 100%;',
                     '}',
-                    '*, *::before, *::after { box-sizing: border-box; }'
+                    ':root {',
+                    '  --netic-safe-top: env(safe-area-inset-top);',
+                    '  --netic-safe-bottom: env(safe-area-inset-bottom);',
+                    '  --netic-safe-left: env(safe-area-inset-left);',
+                    '  --netic-safe-right: env(safe-area-inset-right);',
+                    '}'
                 ].join('\\n');
                 (document.head || document.documentElement).appendChild(style);
             }
@@ -115,23 +161,20 @@ struct WebView: UIViewRepresentable {
             meta.setAttribute('content',
                 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
         }
-        document.documentElement.style.height = '100%';
-        document.body.style.width = '100%';
-        document.body.style.minHeight = '100%';
-        document.body.style.overflowX = 'hidden';
+        document.documentElement.style.cssText = 'margin:0;padding:0;width:100%;height:100%;min-height:100dvh;';
+        document.body.style.cssText = 'margin:0;padding:0;width:100%;min-height:100dvh;overflow-x:hidden;';
         window.dispatchEvent(new Event('resize'));
     })();
     """
 
     class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         var parent: WebView
+        weak var container: WebViewContainer?
         weak var webView: WKWebView?
 
         init(_ parent: WebView) {
             self.parent = parent
         }
-
-        // MARK: - WKNavigationDelegate
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             DispatchQueue.main.async {
@@ -143,6 +186,7 @@ struct WebView: UIViewRepresentable {
             webView.scrollView.zoomScale = 1.0
             webView.scrollView.minimumZoomScale = 1.0
             webView.scrollView.maximumZoomScale = 1.0
+            container?.resetScrollInsets()
 
             webView.evaluateJavaScript(WebView.layoutFixScript, completionHandler: nil)
 
@@ -162,30 +206,20 @@ struct WebView: UIViewRepresentable {
         private func handleError(_ error: Error) {
             let nsError = error as NSError
             print("WebView Error: \(nsError.localizedDescription) (Code: \(nsError.code))")
-
             DispatchQueue.main.async {
                 self.parent.webViewState.isLoading = false
             }
         }
 
-        // MARK: - WKScriptMessageHandler
-
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.name == "netic" else { return }
 
             if let body = message.body as? [String: Any],
-               let type = body["type"] as? String {
-                switch type {
-                case "vibrate":
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
-                default:
-                    break
-                }
+               let type = body["type"] as? String,
+               type == "vibrate" {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             }
         }
-
-        // MARK: - WKUIDelegate
 
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
             if navigationAction.request.url != nil {
@@ -203,12 +237,11 @@ struct WebView: UIViewRepresentable {
             if url.absoluteString.contains("jtheberg.cloud") || url.absoluteString.contains("jtheberg") {
                 if !url.absoluteString.contains("oauth"),
                    !url.absoluteString.contains("authorize"),
-                   !url.absoluteString.contains("login") {
-                    if let chatUrl = URL(string: "https://neticai.fr/chat") {
-                        webView.load(URLRequest(url: chatUrl))
-                        decisionHandler(.cancel)
-                        return
-                    }
+                   !url.absoluteString.contains("login"),
+                   let chatUrl = URL(string: "https://neticai.fr/chat") {
+                    webView.load(URLRequest(url: chatUrl))
+                    decisionHandler(.cancel)
+                    return
                 }
             }
 
