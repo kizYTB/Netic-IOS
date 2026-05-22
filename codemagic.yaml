@@ -4,16 +4,15 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       xcode: latest
+      vars:
+        GITHUB_REPO: "kizYTB/Netic-IOS"
+        RELEASE_TAG: "latest-build"
     scripts:
       - name: Build iOS app (.ipa)
         script: |
-          # Install XcodeGen
           brew install xcodegen
-
-          # Generate Xcode project
           xcodegen generate
 
-          # Build de l'application
           xcodebuild clean build \
             -project "NeticAI.xcodeproj" \
             -scheme "NeticAI" \
@@ -24,11 +23,54 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             -archivePath build/NeticAI.xcarchive archive
 
-          # Packaging en IPA
           mkdir -p build/Payload
           cp -r build/NeticAI.xcarchive/Products/Applications/NeticAI.app build/Payload/
           cd build
           zip -r NeticAI.ipa Payload/
+
+      - name: Publish GitHub Release
+        script: |
+          # Supprime la release existante si elle existe
+          RELEASE_ID=$(curl -s \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPO/releases/tags/$RELEASE_TAG" \
+            | grep '"id"' | head -1 | grep -o '[0-9]*')
+
+          if [ -n "$RELEASE_ID" ]; then
+            echo "Suppression de la release $RELEASE_ID..."
+            curl -s -X DELETE \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/$GITHUB_REPO/releases/$RELEASE_ID"
+          fi
+
+          # Supprime le tag existant
+          curl -s -X DELETE \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPO/git/refs/tags/$RELEASE_TAG"
+
+          # Crée la nouvelle release
+          RELEASE=$(curl -s -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/$GITHUB_REPO/releases" \
+            -d "{
+              \"tag_name\": \"$RELEASE_TAG\",
+              \"name\": \"Netic AI - Build $(date '+%d/%m/%Y %H:%M')\",
+              \"body\": \"Build automatique via Codemagic\",
+              \"draft\": false,
+              \"prerelease\": false
+            }")
+
+          UPLOAD_URL=$(echo "$RELEASE" | grep -o '"upload_url": "[^"]*"' | grep -o 'https://[^{]*')
+
+          # Upload le .ipa
+          curl -s -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/octet-stream" \
+            "$UPLOAD_URL?name=NeticAI.ipa" \
+            --data-binary @build/NeticAI.ipa
+
+          echo "Release publiée avec succès !"
 
     artifacts:
       - build/NeticAI.ipa
