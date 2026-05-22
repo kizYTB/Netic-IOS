@@ -1,35 +1,35 @@
 workflows:
   ios-build:
     name: Netic iOS Build
-
     instance_type: mac_mini_m2
-
     environment:
       xcode: latest
-
     scripts:
-      - name: Generate project
-        script: xcodegen generate
-
       - name: Build iOS app (.ipa)
         script: |
-          set -e
+          # Install XcodeGen
+          brew install xcodegen
 
-          xcodebuild clean archive \
+          # Generate Xcode project
+          xcodegen generate
+
+          # Build de l'application
+          xcodebuild clean build \
             -project "NeticAI.xcodeproj" \
             -scheme "NeticAI" \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath build/NeticAI.xcarchive \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            -archivePath build/NeticAI.xcarchive archive
 
+          # Packaging en IPA
           mkdir -p build/Payload
           cp -r build/NeticAI.xcarchive/Products/Applications/NeticAI.app build/Payload/
-
           cd build
           zip -r NeticAI.ipa Payload/
 
     artifacts:
       - build/NeticAI.ipa
+      - /tmp/xcodebuild_logs/*.log
