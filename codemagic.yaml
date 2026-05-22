@@ -9,9 +9,9 @@ workflows:
         script: brew install xcodegen
       - name: Generate Xcode project
         script: xcodegen generate
-      - name: Build iOS app (Unsigned)
+      - name: Build iOS app (.ipa)
         script: |
-          # Build de l'application sans signature (pour vérifier que le code compile bien)
+          # Build de l'application au format IPA
           xcodebuild clean build \
             -project "NeticAI.xcodeproj" \
             -scheme "NeticAI" \
@@ -19,11 +19,14 @@ workflows:
             -sdk iphoneos \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
-          
-          # Pour générer un .ipa valide pour l'App Store, vous devrez :
-          # 1. Configurer vos certificats Apple dans l'interface Codemagic
-          # 2. Remplacer la commande ci-dessus par 'xcode-project build-ipa --project "NeticAI.xcodeproj" --scheme "NeticAI"'
+            CODE_SIGNING_ALLOWED=NO \
+            -archivePath build/NeticAI.xcarchive archive
+            
+          # Packaging de l'archive en IPA
+          mkdir -p build/Payload
+          cp -r build/NeticAI.xcarchive/Products/Applications/NeticAI.app build/Payload/
+          cd build
+          zip -r NeticAI.ipa Payload/
     artifacts:
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - build/NeticAI.ipa
       - /tmp/xcodebuild_logs/*.log
