@@ -4,8 +4,9 @@ struct ContentView: View {
     @StateObject private var networkMonitor = NetworkMonitor()
     @StateObject private var webViewState = WebViewState()
     private let url = URL(string: "https://neticai.fr/chat")!
-    
+
     @State private var webViewId = UUID()
+    @State private var showWelcome = !WelcomeStorage.hasCompletedWelcome
 
     var body: some View {
         ZStack {
@@ -16,7 +17,8 @@ struct ContentView: View {
             // L'opacité est à 0 seulement si pas de réseau, pour cacher la page cassée
             WebView(url: url, webViewState: webViewState)
                 .id(webViewId)
-                .ignoresSafeArea(.all, edges: .bottom)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea(.all)
                 .opacity(networkMonitor.isConnected ? 1 : 0)
 
             // Écran de chargement ultra minimaliste
@@ -33,12 +35,21 @@ struct ContentView: View {
                     }
                 )
             }
+
+            if showWelcome {
+                WelcomeView {
+                    WelcomeStorage.markWelcomeCompleted()
+                    showWelcome = false
+                }
+                .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                .zIndex(10)
+            }
         }
         .animation(.easeInOut(duration: 0.4), value: webViewState.isLoading)
         .animation(.easeInOut(duration: 0.4), value: networkMonitor.isConnected)
+        .animation(.easeInOut(duration: 0.35), value: showWelcome)
     }
 }
-
 struct LoadingView: View {
     @State private var isPulsing = false
     
