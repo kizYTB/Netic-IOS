@@ -75,22 +75,29 @@ workflows:
 
       - name: Supprimer et recréer la release GitHub
         script: |
-          # Supprime la release existante si elle existe (ignore l'erreur si absente)
+          # Authentifier gh avec le token
+          echo "$GITHUB_TOKEN" | gh auth login --with-token
+
+          # Supprime la release existante si elle existe
           gh release delete "$RELEASE_TAG" \
-            --repo "$CM_REPO_SLUG" \
+            --repo "kizYTB/Netic-IOS" \
             --yes \
             --cleanup-tag 2>/dev/null || echo "Aucune release existante, on continue."
 
-          # Petite pause pour que GitHub supprime bien le tag
           sleep 3
+
+          # Supprime le tag local s'il existe déjà
+          git tag -d "$RELEASE_TAG" 2>/dev/null || true
 
           # Recrée le tag sur le commit courant
           git tag "$RELEASE_TAG"
-          git push origin "$RELEASE_TAG"
+
+          # Push le tag avec le token dans l'URL
+          git push "https://$GITHUB_TOKEN@github.com/kizYTB/Netic-IOS.git" "$RELEASE_TAG"
 
           # Crée la nouvelle release avec l'IPA
           gh release create "$RELEASE_TAG" \
-            --repo "$CM_REPO_SLUG" \
+            --repo "kizYTB/Netic-IOS" \
             --title "$RELEASE_TITLE $RELEASE_TAG" \
             --notes "Build automatique par Codemagic — $(date '+%d/%m/%Y %H:%M')" \
             build/NeticAI.ipa
