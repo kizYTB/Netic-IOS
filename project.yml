@@ -21,3 +21,4 @@ targets:
         CFBundleVersion: "1"
         CFBundleIdentifier: "fr.neticai.NeticAI"
         CFBundleName: "Netic AI"
+        CFBundleIconName: "AppIcon"
