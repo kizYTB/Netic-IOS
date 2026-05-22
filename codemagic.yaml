@@ -4,14 +4,19 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       xcode: latest
+      vars:
+        GITHUB_TOKEN: $GITHUB_TOKEN   # À définir dans Codemagic > Environment variables
+        RELEASE_TAG: "1.0.0"          # Change ce tag à chaque version
+        RELEASE_TITLE: "Netic AI"
     scripts:
       - name: Install XcodeGen
         script: brew install xcodegen
+
       - name: Generate Xcode project
         script: xcodegen generate
+
       - name: Build iOS app (.ipa)
         script: |
-          # Création manuelle d'un Info.plist propre avant la compilation
           cat << 'EOF' > Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -50,11 +55,9 @@ workflows:
           </dict>
           </plist>
           EOF
-          
-          # Régénère le projet avec le Info.plist forcé
+
           xcodegen generate
 
-          # Build de l'application au format IPA
           xcodebuild clean build \
             -project "NeticAI.xcodeproj" \
             -scheme "NeticAI" \
@@ -64,12 +67,34 @@ workflows:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             -archivePath build/NeticAI.xcarchive archive
-            
-          # Packaging de l'archive en IPA
+
           mkdir -p build/Payload
           cp -r build/NeticAI.xcarchive/Products/Applications/NeticAI.app build/Payload/
           cd build
           zip -r NeticAI.ipa Payload/
+
+      - name: Supprimer et recréer la release GitHub
+        script: |
+          # Supprime la release existante si elle existe (ignore l'erreur si absente)
+          gh release delete "$RELEASE_TAG" \
+            --repo "$CM_REPO_SLUG" \
+            --yes \
+            --cleanup-tag 2>/dev/null || echo "Aucune release existante, on continue."
+
+          # Petite pause pour que GitHub supprime bien le tag
+          sleep 3
+
+          # Recrée le tag sur le commit courant
+          git tag "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
+          # Crée la nouvelle release avec l'IPA
+          gh release create "$RELEASE_TAG" \
+            --repo "$CM_REPO_SLUG" \
+            --title "$RELEASE_TITLE $RELEASE_TAG" \
+            --notes "Build automatique par Codemagic — $(date '+%d/%m/%Y %H:%M')" \
+            build/NeticAI.ipa
+
     artifacts:
       - build/NeticAI.ipa
       - /tmp/xcodebuild_logs/*.log
