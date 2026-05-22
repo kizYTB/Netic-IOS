@@ -25,7 +25,8 @@ struct WebView: UIViewRepresentable {
             webView.isInspectable = true
         }
         
-        webView.scrollView.bounces = false
+        webView.scrollView.bounces = true
+        webView.allowsBackForwardNavigationGestures = true
         
         return webView
     }

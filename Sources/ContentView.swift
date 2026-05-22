@@ -40,39 +40,51 @@ struct ContentView: View {
                 )
             }
         }
-        .animation(.easeInOut, value: webViewState.isLoading)
-        .animation(.easeInOut, value: webViewState.hasError)
-        .animation(.easeInOut, value: networkMonitor.isConnected)
+        .animation(.easeInOut(duration: 0.3), value: webViewState.isLoading)
+        .animation(.easeInOut(duration: 0.3), value: webViewState.hasError)
+        .animation(.easeInOut(duration: 0.3), value: networkMonitor.isConnected)
     }
 }
 
 struct LoadingView: View {
+    @State private var isAnimating = false
+    
     var body: some View {
         ZStack {
-            Color(UIColor.systemBackground).ignoresSafeArea()
-            VStack(spacing: 30) {
-                // Logo de l'application au centre
-                if let appIcon = UIImage(named: "AppIcon") {
-                    Image(uiImage: appIcon)
-                        .resizable()
-                        .frame(width: 120, height: 120)
-                        .cornerRadius(26)
-                        .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
-                } else {
-                    // Fallback si l'image ne charge pas dans le preview
-                    RoundedRectangle(cornerRadius: 26)
-                        .fill(Color.blue)
-                        .frame(width: 120, height: 120)
-                        .overlay(Text("N").font(.largeTitle).foregroundColor(.white))
+            // Fond dégradé subtil
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(UIColor.systemBackground),
+                    Color.blue.opacity(0.05)
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            ).ignoresSafeArea()
+            
+            VStack(spacing: 35) {
+                // Logo avec effet de pulsation
+                Image("Logo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 110, height: 110)
+                    .cornerRadius(24)
+                    .shadow(color: Color.blue.opacity(0.15), radius: 20, x: 0, y: 10)
+                    .scaleEffect(isAnimating ? 1.05 : 0.95)
+                    .animation(Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isAnimating)
+                
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                        .scaleEffect(1.2)
+                    
+                    Text("Chargement de votre assistant...")
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
                 }
-                
-                ProgressView()
-                    .scaleEffect(1.5)
-                
-                Text("Connexion à Netic AI...")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
             }
+        }
+        .onAppear {
+            isAnimating = true
         }
     }
 }
@@ -84,32 +96,42 @@ struct OfflineView: View {
     var body: some View {
         ZStack {
             Color(UIColor.systemBackground).ignoresSafeArea()
+            
             VStack(spacing: 24) {
-                Image(systemName: isNetworkError ? "wifi.slash" : "server.rack")
-                    .font(.system(size: 60))
-                    .foregroundColor(.red)
+                ZStack {
+                    Circle()
+                        .fill(Color.red.opacity(0.1))
+                        .frame(width: 100, height: 100)
+                    
+                    Image(systemName: isNetworkError ? "wifi.slash" : "exclamationmark.triangle")
+                        .font(.system(size: 40, weight: .medium))
+                        .foregroundColor(.red)
+                }
+                .padding(.bottom, 10)
                 
-                Text(isNetworkError ? "Aucune connexion" : "Serveur inaccessible")
-                    .font(.title2)
-                    .fontWeight(.bold)
+                Text(isNetworkError ? "Hors Ligne" : "Erreur de connexion")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
                 
-                Text(isNetworkError ? "Vérifiez votre connexion internet et réessayez." : "Les serveurs de Netic AI sont actuellement injoignables. Veuillez réessayer plus tard.")
+                Text(isNetworkError ? "Vérifiez votre connexion internet et réessayez." : "Les serveurs de Netic AI sont actuellement injoignables.")
+                    .font(.system(size: 16))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
                     .foregroundColor(.secondary)
                 
                 Button(action: retryAction) {
-                    Text("Réessayer")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, 32)
-                        .padding(.vertical, 14)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                        .shadow(radius: 3)
+                    HStack {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Réessayer")
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 16)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(16)
+                    .shadow(color: Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
-                .padding(.top, 10)
+                .padding(.top, 20)
             }
         }
     }
