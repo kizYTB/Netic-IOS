@@ -2,18 +2,25 @@ workflows:
   ios-build:
     name: Netic iOS Build
     instance_type: mac_mini_m2
+
     environment:
       xcode: latest
+
+      groups:
+        - github
+
       vars:
-        GITHUB_TOKEN: $GITHUB_TOKEN
         RELEASE_TAG: "1.0.0"
         RELEASE_TITLE: "Netic AI"
+
     scripts:
       - name: Install XcodeGen
-        script: brew install xcodegen
+        script: |
+          brew install xcodegen
 
       - name: Generate Xcode project
-        script: xcodegen generate
+        script: |
+          xcodegen generate
 
       - name: Build iOS app (.ipa)
         script: |
@@ -24,30 +31,42 @@ workflows:
           <dict>
               <key>CFBundleDevelopmentRegion</key>
               <string>en</string>
+
               <key>CFBundleExecutable</key>
               <string>$(EXECUTABLE_NAME)</string>
+
               <key>CFBundleIdentifier</key>
               <string>fr.neticai.NeticAI</string>
+
               <key>CFBundleInfoDictionaryVersion</key>
               <string>6.0</string>
+
               <key>CFBundleName</key>
               <string>Netic AI</string>
+
               <key>CFBundleIconName</key>
               <string>AppIcon</string>
+
               <key>CFBundlePackageType</key>
               <string>APPL</string>
+
               <key>CFBundleShortVersionString</key>
               <string>1.0</string>
+
               <key>CFBundleVersion</key>
               <string>1</string>
+
               <key>LSRequiresIPhoneOS</key>
               <true/>
+
               <key>UILaunchScreen</key>
               <dict/>
+
               <key>UIRequiredDeviceCapabilities</key>
               <array>
                   <string>armv7</string>
               </array>
+
               <key>UISupportedInterfaceOrientations</key>
               <array>
                   <string>UIInterfaceOrientationPortrait</string>
@@ -58,7 +77,7 @@ workflows:
 
           xcodegen generate
 
-          xcodebuild clean build \
+          xcodebuild clean archive \
             -project "NeticAI.xcodeproj" \
             -scheme "NeticAI" \
             -configuration Release \
@@ -66,39 +85,59 @@ workflows:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            -archivePath build/NeticAI.xcarchive archive
+            -archivePath build/NeticAI.xcarchive
 
           mkdir -p build/Payload
-          cp -r build/NeticAI.xcarchive/Products/Applications/NeticAI.app build/Payload/
+
+          cp -r \
+            build/NeticAI.xcarchive/Products/Applications/NeticAI.app \
+            build/Payload/
+
           cd build
+
           zip -r NeticAI.ipa Payload/
 
-      - name: Supprimer et recréer la release GitHub
+      - name: Debug GitHub Token
         script: |
-          # Configurer git pour utiliser gh comme credential helper
-          gh auth setup-git
+          echo "===== DEBUG TOKEN ====="
 
-          # Supprime la release + tag distant si existants
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "TOKEN VIDE"
+            exit 1
+          fi
+
+          echo "TOKEN OK"
+          echo "TAILLE TOKEN: ${#GITHUB_TOKEN}"
+
+      - name: Test GitHub API
+        script: |
+          curl -H "Authorization: token $GITHUB_TOKEN" \
+          https://api.github.com/user
+
+      - name: Publier la release GitHub
+        script: |
+          export GH_TOKEN=$GITHUB_TOKEN
+
+          echo "===== AUTH STATUS ====="
+          gh auth status
+
+          echo "===== DELETE OLD RELEASE ====="
+
           gh release delete "$RELEASE_TAG" \
-            --repo "kizYTB/Netic-IOS" \
+            --repo kizYTB/Netic-IOS \
             --yes \
-            --cleanup-tag 2>/dev/null || echo "Aucune release existante, on continue."
+            --cleanup-tag || true
 
           sleep 3
 
-          # Supprime le tag local s'il existe
-          git tag -d "$RELEASE_TAG" 2>/dev/null || true
+          echo "===== CREATE RELEASE ====="
 
-          # Recrée le tag et push via gh (authentifié)
-          git tag "$RELEASE_TAG"
-          git push origin "$RELEASE_TAG"
-
-          # Crée la nouvelle release avec l'IPA
           gh release create "$RELEASE_TAG" \
-            --repo "kizYTB/Netic-IOS" \
+            build/NeticAI.ipa \
+            --repo kizYTB/Netic-IOS \
             --title "$RELEASE_TITLE $RELEASE_TAG" \
-            --notes "Build automatique par Codemagic — $(date '+%d/%m/%Y %H:%M')" \
-            build/NeticAI.ipa
+            --notes "Build automatique Codemagic" \
+            --target main
 
     artifacts:
       - build/NeticAI.ipa
