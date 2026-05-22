@@ -28,9 +28,8 @@ workflows:
           cd build
           zip -r NeticAI.ipa Payload/
 
-- name: Publish GitHub Release
+      - name: Publish GitHub Release
         script: |
-          # Vérifie que le token est bien présent
           if [ -z "$GITHUB_TOKEN" ]; then
             echo "ERREUR : GITHUB_TOKEN n'est pas défini !"
             exit 1
@@ -38,7 +37,6 @@ workflows:
 
           echo "Token détecté : ${GITHUB_TOKEN:0:6}..."
 
-          # Supprime la release existante si elle existe
           RELEASE_ID=$(curl -s \
             -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/repos/$GITHUB_REPO/releases/tags/$RELEASE_TAG" \
@@ -51,12 +49,10 @@ workflows:
               "https://api.github.com/repos/$GITHUB_REPO/releases/$RELEASE_ID"
           fi
 
-          # Supprime le tag
           curl -s -X DELETE \
             -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/repos/$GITHUB_REPO/git/refs/tags/$RELEASE_TAG"
 
-          # Crée la nouvelle release
           RELEASE=$(curl -s -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Content-Type: application/json" \
@@ -71,7 +67,6 @@ workflows:
 
           echo "Réponse GitHub : $RELEASE"
 
-          # Vérifie si la release a bien été créée
           if echo "$RELEASE" | grep -q '"Bad credentials"'; then
             echo "ERREUR : Token GitHub invalide !"
             exit 1
@@ -84,7 +79,6 @@ workflows:
             exit 1
           fi
 
-          # Upload le .ipa
           curl -s -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Content-Type: application/octet-stream" \
@@ -92,6 +86,7 @@ workflows:
             --data-binary @build/NeticAI.ipa
 
           echo "Release publiée avec succès !"
+
     artifacts:
       - build/NeticAI.ipa
       - /tmp/xcodebuild_logs/*.log
