@@ -24,8 +24,35 @@ targets:
     sources:
       - path: Sources
 
-    resources:
-      - path: Resources/Assets.xcassets
+    # XcodeGen n'ajoute pas toujours la phase "Compile Asset Catalog" :
+    # on compile explicitement Assets.xcassets avec actool.
+    postBuildScripts:
+      - name: Compile Asset Catalog
+        basedOnDependencyAnalysis: false
+        script: |
+          set -euo pipefail
+          ASSET_DIR="${SRCROOT}/Resources/Assets.xcassets"
+          APP_DIR="${TARGET_BUILD_DIR}/${WRAPPER_NAME}"
+          if [ ! -d "${ASSET_DIR}" ]; then
+            echo "error: ${ASSET_DIR} introuvable"
+            exit 1
+          fi
+          mkdir -p "${APP_DIR}"
+          xcrun actool "${ASSET_DIR}" \
+            --compile "${APP_DIR}" \
+            --platform iphoneos \
+            --minimum-deployment-target 16.0 \
+            --app-icon AppIcon \
+            --target-device iphone \
+            --compress-pngs \
+            --enable-on-demand-resources NO \
+            --output-partial-info-plist "${DERIVED_FILE_DIR}/assetcatalog_generated_info.plist"
+          if [ ! -f "${APP_DIR}/Assets.car" ]; then
+            echo "error: Assets.car non généré dans ${APP_DIR}"
+            ls -la "${APP_DIR}" || true
+            exit 1
+          fi
+          echo "OK: Assets.car compilé dans ${APP_DIR}"
 
     info:
       path: Info.plist
