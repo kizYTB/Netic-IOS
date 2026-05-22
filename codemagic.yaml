@@ -25,14 +25,16 @@ workflows:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon \
+            INFOPLIST_KEY_CFBundleIconName=AppIcon \
             INFOPLIST_FILE=Info.plist \
             GENERATE_INFOPLIST_FILE=NO
 
           APP_PATH="build/NeticAI.xcarchive/Products/Applications/NeticAI.app"
           ASSET_DIR="$(pwd)/Resources/Assets.xcassets"
+          PARTIAL_PLIST="/tmp/assetcatalog_generated_info.plist"
 
           if [ ! -f "$APP_PATH/Assets.car" ]; then
-            echo "XcodeGen n'a pas compilé le catalogue — actool manuel..."
+            echo "Compilation actool du catalogue d'assets..."
             xcrun actool "$ASSET_DIR" \
               --compile "$APP_PATH" \
               --platform iphoneos \
@@ -41,7 +43,7 @@ workflows:
               --target-device iphone \
               --compress-pngs \
               --enable-on-demand-resources NO \
-              --output-partial-info-plist /tmp/assetcatalog_generated_info.plist
+              --output-partial-info-plist "$PARTIAL_PLIST"
           fi
 
           if [ ! -f "$APP_PATH/Assets.car" ]; then
@@ -49,6 +51,13 @@ workflows:
             ls -la "$APP_PATH" || true
             exit 1
           fi
+
+          if [ -f "$PARTIAL_PLIST" ]; then
+            /usr/libexec/PlistBuddy -c "Merge $PARTIAL_PLIST" "$APP_PATH/Info.plist" 2>/dev/null || true
+          fi
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIconName" "$APP_PATH/Info.plist" >/dev/null 2>&1 \
+            && /usr/libexec/PlistBuddy -c "Set :CFBundleIconName AppIcon" "$APP_PATH/Info.plist" \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string AppIcon" "$APP_PATH/Info.plist"
 
           ICON_NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIconName" "$APP_PATH/Info.plist" 2>/dev/null || echo "")
           if [ "$ICON_NAME" != "AppIcon" ]; then
