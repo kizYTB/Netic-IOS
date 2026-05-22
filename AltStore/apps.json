@@ -2,7 +2,6 @@
   "name": "Netic AI Repository",
   "identifier": "fr.neticai.repo",
   "sourceURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/AltStore/apps.json",
-  "marketplaceID": "fr.neticai.repo",
   "apps": [
     {
       "name": "Netic AI",
@@ -12,17 +11,9 @@
       "versionDate": "2026-05-22T00:00:00Z",
       "versionDescription": "Première version de l'application Netic AI.",
       "downloadURL": "https://github.com/kizYTB/Netic-IOS/releases/latest/download/NeticAI.ipa",
-      "localizedDescription": "L'application officielle iOS pour Netic AI. Discutez avec votre IA, analysez des images et utilisez la transcription vocale.",
+      "localizedDescription": "L'application officielle iOS pour Netic AI.",
       "iconURL": "https://raw.githubusercontent.com/kizYTB/Netic-IOS/main/Resources/Assets.xcassets/AppIcon.appiconset/icon.png",
-      "tintColor": "#007AFF",
-      "size": 15000000,
-      "marketplaceID": "fr.neticai.repo",
-      "permissions": {
-        "backgroundAudio": {
-          "description": "Utilisé pour la lecture vocale en arrière-plan.",
-          "reason": "Pour que l'IA puisse continuer de vous parler."
-        }
-      }
+      "tintColor": "#007AFF"
     }
   ]
 }
