@@ -74,8 +74,14 @@ struct WebView: UIViewRepresentable {
         
         private func handleError(_ error: Error) {
             let nsError = error as NSError
-            // Ignore "navigation cancelled" (-999) errors
+            // Ignorer les erreurs courantes de redirection ou d'annulation
             if nsError.code == NSURLErrorCancelled { return }
+            
+            // Ignorer les erreurs de schéma non pris en charge (ex: netic:// ou oidc://)
+            if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorUnsupportedURL {
+                print("Ignored unsupported URL scheme: \(error.localizedDescription)")
+                return
+            }
             
             DispatchQueue.main.async {
                 self.parent.webViewState.isLoading = false
@@ -104,10 +110,37 @@ struct WebView: UIViewRepresentable {
         // MARK: - WKUIDelegate
         
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-            if navigationAction.targetFrame == nil {
+            if let url = navigationAction.request.url {
+                print("Demande d'ouverture de fenêtre: \(url.absoluteString)")
+                // Si c'est une redirection d'authentification ou un lien externe
                 webView.load(navigationAction.request)
             }
             return nil
+        }
+        
+        // Gérer les redirections OAuth
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            guard let url = navigationAction.request.url else {
+                decisionHandler(.allow)
+                return
+            }
+            
+            print("Navigation vers: \(url.absoluteString)")
+            
+            // Si l'URL tente d'ouvrir une application externe (comme l'app Jtheberg ou un lien profond)
+            if !url.absoluteString.hasPrefix("http://") && !url.absoluteString.hasPrefix("https://") {
+                if UIApplication.shared.canOpenURL(url) {
+                    UIApplication.shared.open(url)
+                    decisionHandler(.cancel)
+                    return
+                } else {
+                    // Si on ne peut pas l'ouvrir, on laisse couler mais on ne veut pas déclencher d'erreur bloquante
+                    decisionHandler(.allow)
+                    return
+                }
+            }
+            
+            decisionHandler(.allow)
         }
         
         @available(iOS 15.0, *)
