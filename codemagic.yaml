@@ -15,18 +15,37 @@ workflows:
           brew install xcodegen
           xcodegen generate
 
-          xcodebuild clean build \
+          xcodebuild clean archive \
             -project "NeticAI.xcodeproj" \
             -scheme "NeticAI" \
             -configuration Release \
             -sdk iphoneos \
+            -archivePath build/NeticAI.xcarchive \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            -archivePath build/NeticAI.xcarchive archive
+            ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon \
+            INFOPLIST_FILE=Info.plist \
+            GENERATE_INFOPLIST_FILE=NO
+
+          APP_PATH="build/NeticAI.xcarchive/Products/Applications/NeticAI.app"
+
+          if [ ! -f "$APP_PATH/Assets.car" ]; then
+            echo "ERREUR: Assets.car absent — l'icône n'a pas été compilée."
+            ls -la "$APP_PATH" || true
+            exit 1
+          fi
+
+          ICON_NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIconName" "$APP_PATH/Info.plist" 2>/dev/null || echo "")
+          if [ "$ICON_NAME" != "AppIcon" ]; then
+            echo "ERREUR: CFBundleIconName='$ICON_NAME' (attendu: AppIcon)"
+            exit 1
+          fi
+
+          echo "Icône OK — Assets.car présent, CFBundleIconName=AppIcon"
 
           mkdir -p build/Payload
-          cp -r build/NeticAI.xcarchive/Products/Applications/NeticAI.app build/Payload/
+          cp -r "$APP_PATH" build/Payload/
           cd build
           zip -r NeticAI.ipa Payload/
 
