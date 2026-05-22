@@ -28,8 +28,16 @@ workflows:
           cd build
           zip -r NeticAI.ipa Payload/
 
-      - name: Publish GitHub Release
+- name: Publish GitHub Release
         script: |
+          # Vérifie que le token est bien présent
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "ERREUR : GITHUB_TOKEN n'est pas défini !"
+            exit 1
+          fi
+
+          echo "Token détecté : ${GITHUB_TOKEN:0:6}..."
+
           # Supprime la release existante si elle existe
           RELEASE_ID=$(curl -s \
             -H "Authorization: token $GITHUB_TOKEN" \
@@ -37,13 +45,13 @@ workflows:
             | grep '"id"' | head -1 | grep -o '[0-9]*')
 
           if [ -n "$RELEASE_ID" ]; then
-            echo "Suppression de la release $RELEASE_ID..."
+            echo "Suppression release $RELEASE_ID..."
             curl -s -X DELETE \
               -H "Authorization: token $GITHUB_TOKEN" \
               "https://api.github.com/repos/$GITHUB_REPO/releases/$RELEASE_ID"
           fi
 
-          # Supprime le tag existant
+          # Supprime le tag
           curl -s -X DELETE \
             -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/repos/$GITHUB_REPO/git/refs/tags/$RELEASE_TAG"
@@ -61,7 +69,20 @@ workflows:
               \"prerelease\": false
             }")
 
+          echo "Réponse GitHub : $RELEASE"
+
+          # Vérifie si la release a bien été créée
+          if echo "$RELEASE" | grep -q '"Bad credentials"'; then
+            echo "ERREUR : Token GitHub invalide !"
+            exit 1
+          fi
+
           UPLOAD_URL=$(echo "$RELEASE" | grep -o '"upload_url": "[^"]*"' | grep -o 'https://[^{]*')
+
+          if [ -z "$UPLOAD_URL" ]; then
+            echo "ERREUR : Impossible de récupérer l'URL d'upload !"
+            exit 1
+          fi
 
           # Upload le .ipa
           curl -s -X POST \
@@ -71,7 +92,6 @@ workflows:
             --data-binary @build/NeticAI.ipa
 
           echo "Release publiée avec succès !"
-
     artifacts:
       - build/NeticAI.ipa
       - /tmp/xcodebuild_logs/*.log
