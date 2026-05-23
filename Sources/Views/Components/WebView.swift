@@ -36,9 +36,6 @@ final class WebViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Force le contrôleur à s'étendre au-delà de la safe area
-        view.clipsToBounds = false
-
         // Fond identique à AppTheme.background
         view.backgroundColor = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
 
@@ -119,14 +116,6 @@ final class WebViewController: UIViewController {
         webView.scrollView.scrollIndicatorInsets = .zero
     }
 
-    // Force le frame de la webView à remplir tout l'écran
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        if let window = view.window {
-            webView.frame = window.bounds
-        }
-    }
-
     // MARK: - Coordinator (message handler)
 
     private func makeCoordinator() -> MessageHandler {
@@ -145,26 +134,6 @@ final class WebViewController: UIViewController {
                 (document.head || document.documentElement).appendChild(meta);
             }
             meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
-
-            // Force le body et html à remplir tout l'écran
-            document.documentElement.style.height = '100%';
-            document.documentElement.style.width = '100%';
-            document.documentElement.style.position = 'fixed';
-            document.documentElement.style.top = '0';
-            document.documentElement.style.left = '0';
-            document.documentElement.style.margin = '0';
-            document.documentElement.style.padding = '0';
-            document.documentElement.style.overflow = 'hidden';
-
-            document.body.style.height = '100%';
-            document.body.style.width = '100%';
-            document.body.style.position = 'fixed';
-            document.body.style.top = '0';
-            document.body.style.left = '0';
-            document.body.style.margin = '0';
-            document.body.style.padding = '0';
-            document.body.style.overflow = 'auto';
-            document.body.style.boxSizing = 'border-box';
         })();
         """
         return WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
@@ -189,33 +158,8 @@ final class WebViewController: UIViewController {
                     }
                 }
             }
-
-            // Force fullscreen styling
-            document.documentElement.style.height = '100vh';
-            document.documentElement.style.width = '100vw';
-            document.documentElement.style.position = 'fixed';
-            document.documentElement.style.top = '0';
-            document.documentElement.style.left = '0';
-            document.documentElement.style.margin = '0';
-            document.documentElement.style.padding = '0';
-
-            document.body.style.height = '100vh';
-            document.body.style.width = '100vw';
-            document.body.style.position = 'fixed';
-            document.body.style.top = '0';
-            document.body.style.left = '0';
-            document.body.style.margin = '0';
-            document.body.style.padding = '0';
-            document.body.style.boxSizing = 'border-box';
-
-            // Force env() variables for safe areas
-            var safeTop = 'env(safe-area-inset-top, 0px)';
-            var safeBottom = 'env(safe-area-inset-bottom, 0px)';
-            document.documentElement.style.setProperty('--safe-area-inset-top', safeTop);
-            document.documentElement.style.setProperty('--safe-area-inset-bottom', safeBottom);
         }
         fixBg();
-        setTimeout(fixBg, 100);
         setTimeout(fixBg, 300);
         setTimeout(fixBg, 1000);
         window.dispatchEvent(new Event('resize'));

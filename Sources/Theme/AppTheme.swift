@@ -15,6 +15,7 @@ struct FullScreenOverlay<Content: View>: View {
             content()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
         .ignoresSafeArea(.all)
     }
 }

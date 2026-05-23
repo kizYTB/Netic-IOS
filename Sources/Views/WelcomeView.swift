@@ -40,8 +40,7 @@ struct WelcomeView: View {
                             .foregroundColor(.black)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 18)
-                            .background(Color.white)
-                            .clipShape(Capsule())
+                            .background(Capsule().fill(Color.white))
                     }
                     .padding(.horizontal, 40)
                     .padding(.bottom, 40)

@@ -26,8 +26,7 @@ struct OfflineView: View {
                         .foregroundColor(.black)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
-                        .background(Color.white)
-                        .clipShape(Capsule())
+                        .background(Capsule().fill(Color.white))
                 }
                 .padding(.top, 10)
             }
