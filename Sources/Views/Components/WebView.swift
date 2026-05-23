@@ -5,6 +5,10 @@ struct WebView: UIViewRepresentable {
     let url: URL
     @ObservedObject var webViewState: WebViewState
 
+    private static let debugServerURL = URL(string: "http://192.168.1.44:7777/event")
+    private static let debugSessionId = "webview-fullscreen"
+    private static let debugRunId = "pre-fix"
+
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         let userContentController = WKUserContentController()
@@ -52,6 +56,28 @@ struct WebView: UIViewRepresentable {
         }
 
         webView.allowsBackForwardNavigationGestures = true
+
+        // #region debug-point A:make-uiview
+        Coordinator.reportDebugEvent(
+            hypothesisId: "A",
+            location: "WebView.makeUIView",
+            message: "[DEBUG] WKWebView created",
+            data: [
+                "frame": [
+                    "width": webView.frame.size.width,
+                    "height": webView.frame.size.height
+                ],
+                "scrollInset": [
+                    "top": webView.scrollView.contentInset.top,
+                    "bottom": webView.scrollView.contentInset.bottom
+                ],
+                "adjustedInset": [
+                    "top": webView.scrollView.adjustedContentInset.top,
+                    "bottom": webView.scrollView.adjustedContentInset.bottom
+                ]
+            ]
+        )
+        // #endregion
 
         context.coordinator.webView = webView
         return webView
@@ -141,7 +167,71 @@ struct WebView: UIViewRepresentable {
             webView.scrollView.contentInset = .zero
             webView.scrollView.scrollIndicatorInsets = .zero
 
+            // #region debug-point B:did-finish-native-metrics
+            Self.reportDebugEvent(
+                hypothesisId: "B",
+                location: "WebView.didFinish.native",
+                message: "[DEBUG] Native webview metrics after navigation",
+                data: [
+                    "bounds": [
+                        "width": webView.bounds.size.width,
+                        "height": webView.bounds.size.height
+                    ],
+                    "safeAreaInsets": [
+                        "top": webView.safeAreaInsets.top,
+                        "bottom": webView.safeAreaInsets.bottom
+                    ],
+                    "contentInset": [
+                        "top": webView.scrollView.contentInset.top,
+                        "bottom": webView.scrollView.contentInset.bottom
+                    ],
+                    "adjustedContentInset": [
+                        "top": webView.scrollView.adjustedContentInset.top,
+                        "bottom": webView.scrollView.adjustedContentInset.bottom
+                    ],
+                    "contentSize": [
+                        "width": webView.scrollView.contentSize.width,
+                        "height": webView.scrollView.contentSize.height
+                    ]
+                ]
+            )
+            // #endregion
+
             webView.evaluateJavaScript(WebView.layoutFixScript, completionHandler: nil)
+            // #region debug-point C:did-finish-js-metrics
+            webView.evaluateJavaScript(
+                """
+                (function() {
+                    var rect = document.documentElement.getBoundingClientRect();
+                    return {
+                        href: location.href,
+                        innerWidth: window.innerWidth,
+                        innerHeight: window.innerHeight,
+                        clientWidth: document.documentElement.clientWidth,
+                        clientHeight: document.documentElement.clientHeight,
+                        bodyScrollHeight: document.body ? document.body.scrollHeight : null,
+                        bodyOffsetHeight: document.body ? document.body.offsetHeight : null,
+                        docScrollHeight: document.documentElement.scrollHeight,
+                        docOffsetHeight: document.documentElement.offsetHeight,
+                        rectHeight: rect.height,
+                        visualViewportHeight: window.visualViewport ? window.visualViewport.height : null,
+                        visualViewportOffsetTop: window.visualViewport ? window.visualViewport.offsetTop : null,
+                        bodyBackground: document.body ? getComputedStyle(document.body).backgroundColor : null,
+                        htmlBackground: getComputedStyle(document.documentElement).backgroundColor
+                    };
+                })();
+                """
+            ) { result, _ in
+                Self.reportDebugEvent(
+                    hypothesisId: "C",
+                    location: "WebView.didFinish.js",
+                    message: "[DEBUG] JS viewport metrics after navigation",
+                    data: [
+                        "result": result ?? NSNull()
+                    ]
+                )
+            }
+            // #endregion
 
             DispatchQueue.main.async {
                 self.parent.webViewState.isLoading = false
@@ -175,6 +265,17 @@ struct WebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+            // #region debug-point D:create-webview
+            Self.reportDebugEvent(
+                hypothesisId: "D",
+                location: "WebView.createWebViewWith",
+                message: "[DEBUG] Popup navigation requested",
+                data: [
+                    "targetFrameNil": navigationAction.targetFrame == nil,
+                    "url": navigationAction.request.url?.absoluteString ?? ""
+                ]
+            )
+            // #endregion
             if navigationAction.request.url != nil {
                 webView.load(navigationAction.request)
             }
@@ -206,6 +307,17 @@ struct WebView: UIViewRepresentable {
                 }
             }
 
+            // #region debug-point E:navigation-url
+            Self.reportDebugEvent(
+                hypothesisId: "E",
+                location: "WebView.decidePolicyFor",
+                message: "[DEBUG] Navigation allowed",
+                data: [
+                    "url": url.absoluteString,
+                    "isMainFrame": navigationAction.targetFrame?.isMainFrame ?? false
+                ]
+            )
+            // #endregion
             decisionHandler(.allow)
         }
 
@@ -213,6 +325,29 @@ struct WebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
             decisionHandler(.grant)
         }
+
+        private static func reportDebugEvent(hypothesisId: String, location: String, message: String, data: [String: Any]) {
+            guard let url = WebView.debugServerURL else { return }
+            guard JSONSerialization.isValidJSONObject(data) else { return }
+
+            let payload: [String: Any] = [
+                "sessionId": WebView.debugSessionId,
+                "runId": WebView.debugRunId,
+                "hypothesisId": hypothesisId,
+                "location": location,
+                "msg": message,
+                "data": data,
+                "ts": Int(Date().timeIntervalSince1970 * 1000)
+            ]
+
+            guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body
+
+            URLSession.shared.dataTask(with: request).resume()
+        }
     }
 }
-
