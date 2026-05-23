@@ -6,6 +6,7 @@ struct NeticApp: App {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(.dark)
+                .ignoresSafeArea(.all)
         }
     }
 }
