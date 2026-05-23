@@ -74,8 +74,8 @@ final class WebViewController: UIViewController {
             webView.underPageBackgroundColor = bg
         }
 
-        // CRITIQUE : empêche iOS d'ajouter des insets automatiques
-        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        // CRITIQUE : permet à iOS d'ajuster les insets pour la résolution
+        webView.scrollView.contentInsetAdjustmentBehavior = .automatic
         webView.scrollView.contentInset = .zero
         webView.scrollView.scrollIndicatorInsets = .zero
         webView.scrollView.bounces = true
@@ -112,7 +112,7 @@ final class WebViewController: UIViewController {
     // Réinitialise les insets à chaque changement de safe area (rotation, etc.)
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
-        webView.scrollView.contentInset = .zero
+        // Ne pas réinitialiser contentInset pour permettre l'ajustement automatique
         webView.scrollView.scrollIndicatorInsets = .zero
     }
 
@@ -134,6 +134,12 @@ final class WebViewController: UIViewController {
                 (document.head || document.documentElement).appendChild(meta);
             }
             meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
+            document.documentElement.style.setProperty('--viewport-fit', 'cover');
+            document.body.style.margin = '0';
+            document.body.style.padding = '0';
+            document.body.style.width = '100%';
+            document.body.style.height = '100%';
+            document.body.style.overflow = 'hidden';
         })();
         """
         return WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
@@ -179,7 +185,7 @@ extension WebViewController: WKNavigationDelegate {
         webView.scrollView.zoomScale = 1.0
         webView.scrollView.minimumZoomScale = 1.0
         webView.scrollView.maximumZoomScale = 1.0
-        webView.scrollView.contentInset = .zero
+        // Ne pas réinitialiser contentInset pour permettre l'ajustement automatique
         webView.scrollView.scrollIndicatorInsets = .zero
         webView.evaluateJavaScript(backgroundFixScript, completionHandler: nil)
         DispatchQueue.main.async { self.webViewState.isLoading = false }
