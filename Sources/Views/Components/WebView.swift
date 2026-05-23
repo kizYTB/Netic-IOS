@@ -28,9 +28,9 @@ struct WebView: UIViewRepresentable {
         webView.uiDelegate = context.coordinator
         webView.customUserAgent = Self.mobileUserAgent
 
-        webView.isOpaque = false
-        webView.backgroundColor = .clear
-        webView.scrollView.backgroundColor = .clear
+        webView.isOpaque = true
+        webView.backgroundColor = .black
+        webView.scrollView.backgroundColor = .black
         webView.scrollView.isOpaque = true
         webView.scrollView.bounces = true
         webView.scrollView.alwaysBounceVertical = true
@@ -40,7 +40,7 @@ struct WebView: UIViewRepresentable {
         webView.scrollView.zoomScale = 1.0
         
         // Force la WebView à ignorer sa propre safe area insets
-        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.contentInsetAdjustmentBehavior = .automatic
         webView.scrollView.contentInset = .zero
         webView.scrollView.scrollIndicatorInsets = .zero
         if #available(iOS 13.0, *) {
