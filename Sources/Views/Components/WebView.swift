@@ -326,7 +326,8 @@ struct WebView: UIViewRepresentable {
             decisionHandler(.grant)
         }
 
-        private static func reportDebugEvent(hypothesisId: String, location: String, message: String, data: [String: Any]) {
+        static func reportDebugEvent(hypothesisId: String, location: String, message: String, data: [String: Any]) {
+
             guard let url = WebView.debugServerURL else { return }
             guard JSONSerialization.isValidJSONObject(data) else { return }
 
