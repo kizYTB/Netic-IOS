@@ -5,10 +5,6 @@ struct WebView: UIViewRepresentable {
     let url: URL
     @ObservedObject var webViewState: WebViewState
 
-    private static let debugServerURL = URL(string: "http://192.168.1.44:7777/event")
-    private static let debugSessionId = "webview-fullscreen"
-    private static let debugRunId = "pre-fix"
-
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         let userContentController = WKUserContentController()
@@ -28,9 +24,17 @@ struct WebView: UIViewRepresentable {
         webView.uiDelegate = context.coordinator
         webView.customUserAgent = Self.mobileUserAgent
 
+        // Fond opaque noir — évite les flashs blancs au chargement
         webView.isOpaque = true
-        webView.backgroundColor = .black
-        webView.scrollView.backgroundColor = .black
+        webView.backgroundColor = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
+        webView.scrollView.backgroundColor = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
+
+        // CRITIQUE : .never empêche iOS d'ajouter des insets de safe area
+        // dans le scrollView, ce qui causait les bords noirs
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.contentInset = .zero
+        webView.scrollView.scrollIndicatorInsets = .zero
+
         webView.scrollView.isOpaque = true
         webView.scrollView.bounces = true
         webView.scrollView.alwaysBounceVertical = true
@@ -38,17 +42,13 @@ struct WebView: UIViewRepresentable {
         webView.scrollView.minimumZoomScale = 1.0
         webView.scrollView.maximumZoomScale = 1.0
         webView.scrollView.zoomScale = 1.0
-        
-        // Force la WebView à ignorer sa propre safe area insets
-        webView.scrollView.contentInsetAdjustmentBehavior = .automatic
-        webView.scrollView.contentInset = .zero
-        webView.scrollView.scrollIndicatorInsets = .zero
+
         if #available(iOS 13.0, *) {
             webView.scrollView.automaticallyAdjustsScrollIndicatorInsets = false
         }
 
         if #available(iOS 15.0, *) {
-            webView.underPageBackgroundColor = webView.backgroundColor
+            webView.underPageBackgroundColor = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
         }
 
         if #available(iOS 16.4, *) {
@@ -57,35 +57,12 @@ struct WebView: UIViewRepresentable {
 
         webView.allowsBackForwardNavigationGestures = true
 
-        // #region debug-point A:make-uiview
-        Coordinator.reportDebugEvent(
-            hypothesisId: "A",
-            location: "WebView.makeUIView",
-            message: "[DEBUG] WKWebView created",
-            data: [
-                "frame": [
-                    "width": webView.frame.size.width,
-                    "height": webView.frame.size.height
-                ],
-                "scrollInset": [
-                    "top": webView.scrollView.contentInset.top,
-                    "bottom": webView.scrollView.contentInset.bottom
-                ],
-                "adjustedInset": [
-                    "top": webView.scrollView.adjustedContentInset.top,
-                    "bottom": webView.scrollView.adjustedContentInset.bottom
-                ]
-            ]
-        )
-        // #endregion
-
         context.coordinator.webView = webView
         return webView
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
         context.coordinator.webView = uiView
-
         if uiView.url == nil {
             uiView.load(URLRequest(url: url))
         }
@@ -95,6 +72,8 @@ struct WebView: UIViewRepresentable {
         Coordinator(self)
     }
 
+    // Script injecté AVANT le chargement du document
+    // Force viewport mobile plein écran avec viewport-fit=cover
     private static var viewportScript: WKUserScript {
         let js = """
         (function() {
@@ -115,17 +94,13 @@ struct WebView: UIViewRepresentable {
         return "Mozilla/5.0 (iPhone; CPU iPhone OS \(version) like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1 Netic-iOS/1.0"
     }
 
-    private static let layoutFixScript = """
+    // Script exécuté après chaque navigation pour corriger le fond de page
+    private static let backgroundFixScript = """
     (function() {
-        var meta = document.querySelector('meta[name="viewport"]');
-        if (meta) {
-            meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
-        }
-        
-        function propagateBackground() {
-            var bodyBg = window.getComputedStyle(document.body).backgroundColor;
-            if (bodyBg === 'rgba(0, 0, 0, 0)' || bodyBg === 'transparent') {
-                var root = document.querySelector('#root, #__next, #app, main, .app-container, div[id^="app"]');
+        function fixBackground() {
+            var bg = window.getComputedStyle(document.body).backgroundColor;
+            if (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') {
+                var root = document.querySelector('#root, #__next, #app, main');
                 if (root) {
                     var rootBg = window.getComputedStyle(root).backgroundColor;
                     if (rootBg !== 'rgba(0, 0, 0, 0)' && rootBg !== 'transparent') {
@@ -135,11 +110,9 @@ struct WebView: UIViewRepresentable {
                 }
             }
         }
-        
-        propagateBackground();
-        setTimeout(propagateBackground, 300);
-        setTimeout(propagateBackground, 1000);
-        
+        fixBackground();
+        setTimeout(fixBackground, 300);
+        setTimeout(fixBackground, 1000);
         window.dispatchEvent(new Event('resize'));
     })();
     """
@@ -159,79 +132,14 @@ struct WebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            // Réinitialise zoom et insets après chaque navigation
             webView.scrollView.zoomScale = 1.0
             webView.scrollView.minimumZoomScale = 1.0
             webView.scrollView.maximumZoomScale = 1.0
-            
-            // Re-force insets in case navigation changed it
             webView.scrollView.contentInset = .zero
             webView.scrollView.scrollIndicatorInsets = .zero
 
-            // #region debug-point B:did-finish-native-metrics
-            Self.reportDebugEvent(
-                hypothesisId: "B",
-                location: "WebView.didFinish.native",
-                message: "[DEBUG] Native webview metrics after navigation",
-                data: [
-                    "bounds": [
-                        "width": webView.bounds.size.width,
-                        "height": webView.bounds.size.height
-                    ],
-                    "safeAreaInsets": [
-                        "top": webView.safeAreaInsets.top,
-                        "bottom": webView.safeAreaInsets.bottom
-                    ],
-                    "contentInset": [
-                        "top": webView.scrollView.contentInset.top,
-                        "bottom": webView.scrollView.contentInset.bottom
-                    ],
-                    "adjustedContentInset": [
-                        "top": webView.scrollView.adjustedContentInset.top,
-                        "bottom": webView.scrollView.adjustedContentInset.bottom
-                    ],
-                    "contentSize": [
-                        "width": webView.scrollView.contentSize.width,
-                        "height": webView.scrollView.contentSize.height
-                    ]
-                ]
-            )
-            // #endregion
-
-            webView.evaluateJavaScript(WebView.layoutFixScript, completionHandler: nil)
-            // #region debug-point C:did-finish-js-metrics
-            webView.evaluateJavaScript(
-                """
-                (function() {
-                    var rect = document.documentElement.getBoundingClientRect();
-                    return {
-                        href: location.href,
-                        innerWidth: window.innerWidth,
-                        innerHeight: window.innerHeight,
-                        clientWidth: document.documentElement.clientWidth,
-                        clientHeight: document.documentElement.clientHeight,
-                        bodyScrollHeight: document.body ? document.body.scrollHeight : null,
-                        bodyOffsetHeight: document.body ? document.body.offsetHeight : null,
-                        docScrollHeight: document.documentElement.scrollHeight,
-                        docOffsetHeight: document.documentElement.offsetHeight,
-                        rectHeight: rect.height,
-                        visualViewportHeight: window.visualViewport ? window.visualViewport.height : null,
-                        visualViewportOffsetTop: window.visualViewport ? window.visualViewport.offsetTop : null,
-                        bodyBackground: document.body ? getComputedStyle(document.body).backgroundColor : null,
-                        htmlBackground: getComputedStyle(document.documentElement).backgroundColor
-                    };
-                })();
-                """
-            ) { result, _ in
-                Self.reportDebugEvent(
-                    hypothesisId: "C",
-                    location: "WebView.didFinish.js",
-                    message: "[DEBUG] JS viewport metrics after navigation",
-                    data: [
-                        "result": result ?? NSNull()
-                    ]
-                )
-            }
-            // #endregion
+            webView.evaluateJavaScript(WebView.backgroundFixScript, completionHandler: nil)
 
             DispatchQueue.main.async {
                 self.parent.webViewState.isLoading = false
@@ -256,7 +164,6 @@ struct WebView: UIViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.name == "netic" else { return }
-
             if let body = message.body as? [String: Any],
                let type = body["type"] as? String,
                type == "vibrate" {
@@ -265,17 +172,6 @@ struct WebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-            // #region debug-point D:create-webview
-            Self.reportDebugEvent(
-                hypothesisId: "D",
-                location: "WebView.createWebViewWith",
-                message: "[DEBUG] Popup navigation requested",
-                data: [
-                    "targetFrameNil": navigationAction.targetFrame == nil,
-                    "url": navigationAction.request.url?.absoluteString ?? ""
-                ]
-            )
-            // #endregion
             if navigationAction.request.url != nil {
                 webView.load(navigationAction.request)
             }
@@ -288,6 +184,7 @@ struct WebView: UIViewRepresentable {
                 return
             }
 
+            // Redirige les URLs jtheberg vers neticai.fr/chat (sauf OAuth)
             if url.absoluteString.contains("jtheberg.cloud") || url.absoluteString.contains("jtheberg") {
                 if !url.absoluteString.contains("oauth"),
                    !url.absoluteString.contains("authorize"),
@@ -299,6 +196,7 @@ struct WebView: UIViewRepresentable {
                 }
             }
 
+            // Ouvre les liens non-http dans l'app système (téléphone, mail, etc.)
             if !url.absoluteString.hasPrefix("http://"), !url.absoluteString.hasPrefix("https://") {
                 if UIApplication.shared.canOpenURL(url) {
                     UIApplication.shared.open(url)
@@ -307,48 +205,12 @@ struct WebView: UIViewRepresentable {
                 }
             }
 
-            // #region debug-point E:navigation-url
-            Self.reportDebugEvent(
-                hypothesisId: "E",
-                location: "WebView.decidePolicyFor",
-                message: "[DEBUG] Navigation allowed",
-                data: [
-                    "url": url.absoluteString,
-                    "isMainFrame": navigationAction.targetFrame?.isMainFrame ?? false
-                ]
-            )
-            // #endregion
             decisionHandler(.allow)
         }
 
         @available(iOS 15.0, *)
         func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
             decisionHandler(.grant)
-        }
-
-        static func reportDebugEvent(hypothesisId: String, location: String, message: String, data: [String: Any]) {
-
-            guard let url = WebView.debugServerURL else { return }
-            guard JSONSerialization.isValidJSONObject(data) else { return }
-
-            let payload: [String: Any] = [
-                "sessionId": WebView.debugSessionId,
-                "runId": WebView.debugRunId,
-                "hypothesisId": hypothesisId,
-                "location": location,
-                "msg": message,
-                "data": data,
-                "ts": Int(Date().timeIntervalSince1970 * 1000)
-            ]
-
-            guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
-
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = body
-
-            URLSession.shared.dataTask(with: request).resume()
         }
     }
 }
