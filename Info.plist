@@ -52,12 +52,7 @@
 		<string>audio</string>
 	</array>
 	<key>UILaunchScreen</key>
-	<dict>
-		<key>UIImageName</key>
-		<string></string>
-	</dict>
-	<key>UIViewEdgeAntialiasing</key>
-	<true/>
+	<dict/>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>arm64</string>
