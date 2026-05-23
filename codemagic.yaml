@@ -30,7 +30,13 @@ workflows:
             INFOPLIST_FILE=Info.plist \
             GENERATE_INFOPLIST_FILE=NO
 
-          APP_PATH="build/NeticAI.xcarchive/Products/Applications/NeticAI.app"
+          APP_PATH=$(find build/NeticAI.xcarchive -name "NeticAI.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERREUR: NeticAI.app introuvable dans l'archive !"
+            exit 1
+          fi
+          
+          echo "Application trouvée : $APP_PATH"
           chmod +x Scripts/embed_app_icons.sh
           bash Scripts/embed_app_icons.sh "$APP_PATH" "$(pwd)"
 
