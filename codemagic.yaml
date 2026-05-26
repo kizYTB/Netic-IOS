@@ -18,6 +18,7 @@ workflows:
           brew install xcodegen
           xcodegen generate
 
+          # On archive l'application
           xcodebuild clean archive \
             -project "NeticAI.xcodeproj" \
             -scheme "NeticAI" \
@@ -27,74 +28,63 @@ workflows:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-          # Vérification de l'archive
+          # On vérifie si l'archive existe
           if [ ! -d "build/NeticAI.xcarchive" ]; then
-            echo "ERREUR: L'archive Xcode n'a pas été générée."
+            echo "ERREUR: L'archive Xcode n'a pas pu être générée."
             exit 1
           fi
 
-          # Trouver l'application dans l'archive
+          # On trouve le .app dans l'archive
           APP_PATH=$(find "build/NeticAI.xcarchive" -name "NeticAI.app" -type d | head -n 1)
 
           if [ -z "$APP_PATH" ]; then
-            echo "ERREUR: NeticAI.app introuvable dans l'archive !"
+            echo "ERREUR: Fichier .app introuvable dans l'archive."
             exit 1
           fi
 
           echo "Application trouvée : $APP_PATH"
 
-          # Préparation du Payload pour l'IPA
+          # Préparation du dossier Payload pour l'IPA
           mkdir -p build/Payload
           cp -r "$APP_PATH" build/Payload/
+          
+          # On crée l'IPA
           cd build
           zip -r NeticAI.ipa Payload/
+          cd ..
 
       - name: Publish GitHub Release
         script: |
           if [ -z "$GITHUB_TOKEN" ]; then
-            echo "ERREUR : GITHUB_TOKEN n'est pas défini !"
+            echo "ERREUR : GITHUB_TOKEN absent."
             exit 1
           fi
 
-          # Suppression de l'ancienne release si elle existe
-          RELEASE_ID=$(curl -s \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/$GITHUB_REPO/releases/tags/$RELEASE_TAG" \
-            | grep '"id"' | head -1 | grep -o '[0-9]*')
-
+          # Nettoyage de l'ancienne release
+          RELEASE_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_REPO/releases/tags/$RELEASE_TAG" | grep '"id"' | head -1 | grep -o '[0-9]*')
           if [ -n "$RELEASE_ID" ]; then
             curl -s -X DELETE -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_REPO/releases/$RELEASE_ID"
           fi
-
           curl -s -X DELETE -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_REPO/git/refs/tags/$RELEASE_TAG"
 
           # Création de la nouvelle release
-          RELEASE=$(curl -s -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Content-Type: application/json" \
-            "https://api.github.com/repos/$GITHUB_REPO/releases" \
-            -d "{
+          RELEASE=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" "https://api.github.com/repos/$GITHUB_REPO/releases" -d "{
               \"tag_name\": \"$RELEASE_TAG\",
               \"name\": \"Netic AI - Build $(date '+%d/%m/%Y %H:%M')\",
               \"body\": \"Build automatique via Codemagic\",
-              \"draft\": false,
-              \"prerelease\": false
+              \"draft\": false, \"prerelease\": false
             }")
 
           UPLOAD_URL=$(echo "$RELEASE" | grep -o '"upload_url": "[^"]*"' | grep -o 'https://[^{]*')
 
           if [ -z "$UPLOAD_URL" ]; then
-            echo "ERREUR : Impossible de créer la release GitHub."
+            echo "ERREUR : Création de la release GitHub échouée."
             echo "$RELEASE"
             exit 1
           fi
 
-          # Upload de l'IPA
-          curl -s -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Content-Type: application/octet-stream" \
-            "$UPLOAD_URL?name=NeticAI.ipa" \
-            --data-binary @build/NeticAI.ipa
+          # Upload du fichier IPA
+          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" "$UPLOAD_URL?name=NeticAI.ipa" --data-binary @build/NeticAI.ipa
 
           echo "Release publiée avec succès !"
 
