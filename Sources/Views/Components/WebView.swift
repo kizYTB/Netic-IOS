@@ -133,12 +133,21 @@ final class WebViewController: UIViewController {
             }
             meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
             
-            // Force le layout à occuper tout l'écran disponible
-            document.documentElement.style.height = '100vh';
-            document.documentElement.style.width = '100vw';
+            // Empêche le décalage forcé par le système
+            document.documentElement.style.position = 'fixed';
+            document.documentElement.style.top = '0';
+            document.documentElement.style.left = '0';
+            document.documentElement.style.right = '0';
+            document.documentElement.style.bottom = '0';
+            document.documentElement.style.height = '100%';
+            document.documentElement.style.width = '100%';
             document.documentElement.style.overflow = 'hidden';
-            document.body.style.height = '100vh';
-            document.body.style.width = '100vw';
+            
+            document.body.style.position = 'fixed';
+            document.body.style.top = '0';
+            document.body.style.left = '0';
+            document.body.style.right = '0';
+            document.body.style.bottom = '0';
             document.body.style.margin = '0';
             document.body.style.padding = '0';
             
