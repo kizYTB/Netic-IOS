@@ -17,6 +17,7 @@ final class WebViewController: UIViewController {
     private let url: URL
     private let webViewState: WebViewState
     private var webView: WKWebView!
+    private var webViewBottomConstraint: NSLayoutConstraint!
 
     init(url: URL, webViewState: WebViewState) {
         self.url = url
@@ -28,68 +29,101 @@ final class WebViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        // CORRECTIF BARRES NOIRES : étendre le layout sous toutes les barres
+        edgesForExtendedLayout = .all
+        extendedLayoutIncludesOpaqueBars = true
         view.backgroundColor = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
+
         setupWebView()
         setupConstraints()
+        setupKeyboardObservers()
         webView.load(URLRequest(url: url))
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     private func setupWebView() {
         let config = WKWebViewConfiguration()
-        
         let userContentController = WKUserContentController()
         userContentController.addUserScript(viewportScript)
         config.userContentController = userContentController
-        
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
         config.websiteDataStore = .default()
 
-        // Initialisation avec une frame pleine pour éviter tout calcul de marges par défaut
-        webView = WKWebView(frame: UIScreen.main.bounds, configuration: config)
+        webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.scrollView.delegate = self
-        
-        // User Agent forçant le mode mobile et identifiant l'app
+
         webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1 NeticApp/1.1"
 
         let bg = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
         webView.isOpaque = true
         webView.backgroundColor = bg
         webView.scrollView.backgroundColor = bg
-        
-        // DÉSACTIVE TOUT AJUSTEMENT AUTOMATIQUE : C'est la clé pour supprimer les barres noires
-        webView.scrollView.contentInsetAdjustmentBehavior = .never
-        if #available(iOS 13.0, *) {
-            webView.scrollView.automaticallyAdjustsScrollIndicatorInsets = false
-        }
-        
-        webView.scrollView.bounces = true
-        
-        if #available(iOS 16.4, *) {
-            webView.isInspectable = true
-        }
 
+        // CORRECTIF CLAVIER : on garde "always" pour que iOS gère le clavier proprement
+        webView.scrollView.contentInsetAdjustmentBehavior = .always
+        webView.scrollView.bounces = true
+
+        if #available(iOS 16.4, *) { webView.isInspectable = true }
         webView.allowsBackForwardNavigationGestures = true
         webView.translatesAutoresizingMaskIntoConstraints = false
     }
 
     private func setupConstraints() {
         view.addSubview(webView)
-        
-        // On utilise les contraintes sur la Superview (view) et non la Safe Area
-        // pour garantir que la WebView touche physiquement les bords de l'écran.
+
+        // Ancres top/leading/trailing sur view (pas safeArea) → plein écran
+        webViewBottomConstraint = webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+
         NSLayoutConstraint.activate([
             webView.topAnchor.constraint(equalTo: view.topAnchor),
-            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+            webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            webViewBottomConstraint
         ])
-        
-        // Notification pour forcer le layout lors de l'apparition du clavier
-        NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { _ in
-            self.webView.setNeedsLayout()
+    }
+
+    // CORRECTIF CLAVIER : remonter la webview quand le clavier apparaît
+    private func setupKeyboardObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillShow(_:)),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide(_:)),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+    }
+
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard
+            let info = notification.userInfo,
+            let keyboardFrame = info[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+            let duration = info[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double
+        else { return }
+
+        let keyboardHeight = keyboardFrame.height
+        UIView.animate(withDuration: duration) {
+            self.webViewBottomConstraint.constant = -keyboardHeight
+            self.view.layoutIfNeeded()
+        }
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        guard let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double else { return }
+        UIView.animate(withDuration: duration) {
+            self.webViewBottomConstraint.constant = 0
+            self.view.layoutIfNeeded()
         }
     }
 
@@ -103,37 +137,7 @@ final class WebViewController: UIViewController {
                 (document.head || document.documentElement).appendChild(meta);
             }
             meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
-            
-            // Fix radical pour la résolution et le plein écran
-            // On utilise position: fixed pour que le site ne bouge pas du tout
-            document.documentElement.style.position = 'fixed';
-            document.documentElement.style.top = '0';
-            document.documentElement.style.left = '0';
-            document.documentElement.style.right = '0';
-            document.documentElement.style.bottom = '0';
-            document.documentElement.style.height = '100%';
-            document.documentElement.style.width = '100%';
-            document.documentElement.style.overflow = 'hidden';
-            
-            document.body.style.position = 'fixed';
-            document.body.style.top = '0';
-            document.body.style.left = '0';
-            document.body.style.right = '0';
-            document.body.style.bottom = '0';
-            document.body.style.margin = '0';
-            document.body.style.padding = '0';
-            document.body.style.height = '100%';
-            document.body.style.width = '100%';
-            
             document.documentElement.style.webkitTapHighlightColor = 'transparent';
-            
-            // On désactive le décalage automatique du clavier sur le web
-            window.addEventListener('resize', function() {
-                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
-                    window.scrollTo(0, 0);
-                    document.body.scrollTop = 0;
-                }
-            });
         })();
         """
         return WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
@@ -153,7 +157,6 @@ extension WebViewController: WKNavigationDelegate {
         webViewState.isLoading = false
         webViewState.canGoBack = webView.canGoBack
         webViewState.canGoForward = webView.canGoForward
-        webView.evaluateJavaScript("document.documentElement.style.backgroundColor = '#0d0d0d'; document.body.style.backgroundColor = '#0d0d0d';")
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {

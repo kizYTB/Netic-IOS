@@ -4,7 +4,7 @@ struct ContentView: View {
     @StateObject private var network = NetworkMonitor()
     @StateObject private var webState = WebViewState()
     @State private var webViewId = UUID()
-    
+
     private let url = URL(string: "https://neticai.fr/chat")!
 
     var body: some View {
@@ -12,12 +12,9 @@ struct ContentView: View {
             AppTheme.background
                 .ignoresSafeArea(.all)
 
-            // WebView configurée pour ignorer TOUT (top, bottom, keyboard)
             WebView(url: url, webViewState: webState)
                 .id(webViewId)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .ignoresSafeArea(.all)
-                .opacity(network.isConnected ? 1 : 0)
+                .ignoresSafeArea(.all) // barres + clavier gérés dans UIKit directement
 
             if webState.isLoading && network.isConnected {
                 LoadingView()
@@ -29,7 +26,6 @@ struct ContentView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.all)
         .preferredColorScheme(.dark)
     }
