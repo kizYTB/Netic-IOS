@@ -3,13 +3,13 @@ name: NeticAI
 options:
   bundleIdPrefix: fr.neticai
   deploymentTarget:
-    iOS: "18.0"
+    iOS: "16.0"
 
 targets:
   NeticAI:
     type: application
     platform: iOS
-    deploymentTarget: "18.0"
+    deploymentTarget: "16.0"
 
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: fr.neticai.NeticAI

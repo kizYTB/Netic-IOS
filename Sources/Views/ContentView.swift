@@ -11,18 +11,17 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             AppTheme.background
-                .ignoresSafeArea()
+                .ignoresSafeArea(.all)
 
-            // Utilisation d'une transition plus douce pour la WebView
+            // WebView configurée pour ignorer TOUT (top, bottom, keyboard)
             WebView(url: url, webViewState: webViewState)
                 .id(webViewId)
-                .ignoresSafeArea()
+                .ignoresSafeArea(.all)
                 .opacity(networkMonitor.isConnected ? 1 : 0)
-                .animation(.easeOut(duration: 0.3), value: networkMonitor.isConnected)
 
             if webViewState.isLoading && networkMonitor.isConnected {
                 LoadingView()
-                    .transition(.asymmetric(insertion: .opacity, removal: .opacity))
+                    .transition(.opacity)
                     .zIndex(5)
             }
 
@@ -31,7 +30,6 @@ struct ContentView: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     webViewId = UUID() 
                 })
-                .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(6)
             }
 
@@ -42,11 +40,10 @@ struct ContentView: View {
                         showWelcome = false
                     }
                 }
-                .transition(.opacity.combined(with: .scale(scale: 1.1)))
+                .transition(.opacity)
                 .zIndex(10)
             }
         }
-        .statusBarHidden(false)
         .preferredColorScheme(.dark)
     }
 }

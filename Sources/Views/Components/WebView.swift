@@ -83,6 +83,12 @@ final class WebViewController: UIViewController {
 
         // IMPORTANT : .never avec viewport-fit=cover permet au site de gérer lui-même ses marges
         webView.scrollView.contentInsetAdjustmentBehavior = .never
+        
+        // Empêche le système de modifier les offsets lors de l'apparition du clavier
+        if #available(iOS 13.0, *) {
+            webView.scrollView.automaticallyAdjustsScrollIndicatorInsets = false
+        }
+        
         webView.scrollView.bounces = true
         webView.scrollView.alwaysBounceVertical = true
         webView.scrollView.showsHorizontalScrollIndicator = false
