@@ -23,16 +23,26 @@ workflows:
             -scheme "NeticAI" \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath build/NeticAI.xcarchive \
+            -archivePath "build/NeticAI.xcarchive" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-          APP_PATH=$(find build/NeticAI.xcarchive -name "NeticAI.app" -type d | head -n 1)
+          # Attendre que l'archive soit bien écrite
+          sleep 5
+
+          # Trouver l'application dans l'archive
+          APP_PATH=$(find "build/NeticAI.xcarchive" -name "NeticAI.app" -type d | head -n 1)
+
+          if [ -z "$APP_PATH" ]; then
+            echo "ERREUR: NeticAI.app introuvable dans l'archive !"
+            ls -R build/ || true
+            exit 1
+          fi
           
           # Injection des icônes
           chmod +x Scripts/embed_app_icons.sh
           bash Scripts/embed_app_icons.sh "$APP_PATH" "$(pwd)"
-
+  
           mkdir -p build/Payload
           cp -r "$APP_PATH" build/Payload/
           cd build

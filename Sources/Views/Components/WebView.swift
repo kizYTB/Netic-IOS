@@ -35,7 +35,6 @@ final class WebViewController: UIViewController {
 
     private func setupWebView() {
         let config = WKWebViewConfiguration()
-        config.processPool = WKProcessPool()
         
         let userContentController = WKUserContentController()
         userContentController.addUserScript(viewportScript)
