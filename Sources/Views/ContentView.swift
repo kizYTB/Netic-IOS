@@ -9,26 +9,28 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea(.all)
+            AppTheme.background
+                .ignoresSafeArea(.all)
 
-            if network.isConnected {
-                WebView(url: url, webViewState: webState)
-                    .id(webViewId)
-                    .ignoresSafeArea(.all)
-                    .transition(.opacity)
-                
-                if webState.isLoading {
-                    LoadingView()
-                }
-            } else {
+            // WebView configurée pour ignorer TOUT (top, bottom, keyboard)
+            WebView(url: url, webViewState: webState)
+                .id(webViewId)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea(.all)
+                .opacity(network.isConnected ? 1 : 0)
+
+            if webState.isLoading && network.isConnected {
+                LoadingView()
+            }
+
+            if !network.isConnected {
                 OfflineView {
                     webViewId = UUID()
                 }
-                .transition(.move(edge: .bottom))
             }
         }
-        .animation(.default, value: network.isConnected)
-        .animation(.default, value: webState.isLoading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(.all)
         .preferredColorScheme(.dark)
     }
 }

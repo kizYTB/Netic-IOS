@@ -76,6 +76,12 @@ final class WebViewController: UIViewController {
             webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
+        
+        // Force la WebView à ne pas redimensionner sa fenêtre lors de l'apparition du clavier
+        // Cela permet de garder le layout du site web stable
+        NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { _ in
+            self.webView.setNeedsLayout()
+        }
     }
 
     private var viewportScript: WKUserScript {
@@ -90,6 +96,7 @@ final class WebViewController: UIViewController {
             meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
             
             // Fix radical pour la résolution et le plein écran
+            // On utilise position: fixed pour que le site ne bouge pas du tout
             document.documentElement.style.position = 'fixed';
             document.documentElement.style.top = '0';
             document.documentElement.style.left = '0';
@@ -106,8 +113,18 @@ final class WebViewController: UIViewController {
             document.body.style.bottom = '0';
             document.body.style.margin = '0';
             document.body.style.padding = '0';
+            document.body.style.height = '100%';
+            document.body.style.width = '100%';
             
             document.documentElement.style.webkitTapHighlightColor = 'transparent';
+            
+            // On désactive le décalage automatique du clavier sur le web
+            window.addEventListener('resize', function() {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                    window.scrollTo(0, 0);
+                    document.body.scrollTop = 0;
+                }
+            });
         })();
         """
         return WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
