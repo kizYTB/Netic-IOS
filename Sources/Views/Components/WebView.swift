@@ -49,8 +49,6 @@ final class WebViewController: UIViewController {
 
     private func setupWebView() {
         let config = WKWebViewConfiguration()
-        
-        // Partage du pool de processus pour les cookies et sessions
         config.processPool = WKProcessPool()
         
         let userContentController = WKUserContentController()
@@ -60,33 +58,30 @@ final class WebViewController: UIViewController {
         
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
-        
-        // Optimisation du stockage
         config.websiteDataStore = .default()
 
         if #available(iOS 14.0, *) {
             config.defaultWebpagePreferences.preferredContentMode = .mobile
         }
 
-        webView = WKWebView(frame: .zero, configuration: config)
+        // Utilise UIScreen.main.bounds pour forcer la taille réelle de l'écran dès le départ
+        webView = WKWebView(frame: UIScreen.main.bounds, configuration: config)
         webView.navigationDelegate = self
         webView.uiDelegate = self
         
-        // User Agent plus moderne et standard
         webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1 NeticApp/1.0"
 
         let bg = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
         webView.isOpaque = true
         webView.backgroundColor = bg
         webView.scrollView.backgroundColor = bg
-        
-        // Désactivation du zoom utilisateur pour éviter les bugs de layout
         webView.scrollView.delegate = self
 
         if #available(iOS 15.0, *) {
             webView.underPageBackgroundColor = bg
         }
 
+        // IMPORTANT : .never avec viewport-fit=cover permet au site de gérer lui-même ses marges
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.scrollView.bounces = true
         webView.scrollView.alwaysBounceVertical = true
@@ -138,16 +133,21 @@ final class WebViewController: UIViewController {
             }
             meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
             
-            // Empêche le rebond élastique du body pour un feeling plus "app"
-            document.body.style.overflow = 'auto';
-            document.body.style.webkitOverflowScrolling = 'touch';
+            // Force le layout à occuper tout l'écran disponible
+            document.documentElement.style.height = '100vh';
+            document.documentElement.style.width = '100vw';
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.height = '100vh';
+            document.body.style.width = '100vw';
+            document.body.style.margin = '0';
+            document.body.style.padding = '0';
             
             // Fix pour les zones tactiles sur iOS
             document.documentElement.style.webkitTapHighlightColor = 'transparent';
             document.documentElement.style.webkitTouchCallout = 'none';
         })();
         """
-        return WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+        return WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
     }
 
     private let backgroundFixScript = """
