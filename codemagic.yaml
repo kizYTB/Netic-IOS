@@ -10,6 +10,9 @@ workflows:
         GITHUB_REPO: "kizYTB/Netic-IOS"
         RELEASE_TAG: "latest-build"
     scripts:
+      - name: Install Node dependencies
+        script: |
+          npm install
       - name: Build iOS app (.ipa)
         script: |
           brew install xcodegen

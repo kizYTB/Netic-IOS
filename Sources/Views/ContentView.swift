@@ -11,38 +11,43 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             AppTheme.background
-                .ignoresSafeArea(.all)
+                .ignoresSafeArea()
 
+            // Utilisation d'une transition plus douce pour la WebView
             WebView(url: url, webViewState: webViewState)
                 .id(webViewId)
-                .ignoresSafeArea(.all)
+                .ignoresSafeArea()
                 .opacity(networkMonitor.isConnected ? 1 : 0)
+                .animation(.easeOut(duration: 0.3), value: networkMonitor.isConnected)
 
             if webViewState.isLoading && networkMonitor.isConnected {
                 LoadingView()
-                    .transition(.opacity)
+                    .transition(.asymmetric(insertion: .opacity, removal: .opacity))
                     .zIndex(5)
             }
 
             if !networkMonitor.isConnected {
-                OfflineView(retryAction: { webViewId = UUID() })
-                    .zIndex(6)
+                OfflineView(retryAction: { 
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    webViewId = UUID() 
+                })
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(6)
             }
 
             if showWelcome {
                 WelcomeView {
                     WelcomeStorage.markWelcomeCompleted()
-                    showWelcome = false
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                        showWelcome = false
+                    }
                 }
-                .transition(.opacity)
+                .transition(.opacity.combined(with: .scale(scale: 1.1)))
                 .zIndex(10)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea(.all)
-        .animation(.easeInOut(duration: 0.5), value: webViewState.isLoading)
-        .animation(.easeInOut(duration: 0.5), value: networkMonitor.isConnected)
-        .animation(.easeInOut(duration: 0.8), value: showWelcome)
+        .statusBarHidden(false)
+        .preferredColorScheme(.dark)
     }
 }
 

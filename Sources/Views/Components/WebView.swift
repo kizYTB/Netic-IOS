@@ -49,12 +49,20 @@ final class WebViewController: UIViewController {
 
     private func setupWebView() {
         let config = WKWebViewConfiguration()
+        
+        // Partage du pool de processus pour les cookies et sessions
+        config.processPool = WKProcessPool()
+        
         let userContentController = WKUserContentController()
         userContentController.addUserScript(viewportScript)
         userContentController.add(makeCoordinator(), name: "netic")
         config.userContentController = userContentController
+        
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+        
+        // Optimisation du stockage
+        config.websiteDataStore = .default()
 
         if #available(iOS 14.0, *) {
             config.defaultWebpagePreferences.preferredContentMode = .mobile
@@ -63,32 +71,27 @@ final class WebViewController: UIViewController {
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
         webView.uiDelegate = self
-        webView.customUserAgent = mobileUserAgent
+        
+        // User Agent plus moderne et standard
+        webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1 NeticApp/1.0"
 
         let bg = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
         webView.isOpaque = true
         webView.backgroundColor = bg
         webView.scrollView.backgroundColor = bg
+        
+        // Désactivation du zoom utilisateur pour éviter les bugs de layout
+        webView.scrollView.delegate = self
 
         if #available(iOS 15.0, *) {
             webView.underPageBackgroundColor = bg
         }
 
-        // CRITIQUE : permet à iOS d'ajuster les insets pour la résolution
-        webView.scrollView.contentInsetAdjustmentBehavior = .automatic
-        webView.scrollView.contentInset = .zero
-        webView.scrollView.scrollIndicatorInsets = .zero
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.scrollView.bounces = true
         webView.scrollView.alwaysBounceVertical = true
         webView.scrollView.showsHorizontalScrollIndicator = false
-        webView.scrollView.minimumZoomScale = 1.0
-        webView.scrollView.maximumZoomScale = 1.0
-        webView.scrollView.zoomScale = 1.0
-
-        if #available(iOS 13.0, *) {
-            webView.scrollView.automaticallyAdjustsScrollIndicatorInsets = false
-        }
-
+        
         if #available(iOS 16.4, *) {
             webView.isInspectable = true
         }
@@ -134,46 +137,35 @@ final class WebViewController: UIViewController {
                 (document.head || document.documentElement).appendChild(meta);
             }
             meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
-            document.documentElement.style.setProperty('--viewport-fit', 'cover');
-            document.body.style.margin = '0';
-            document.body.style.padding = '0';
-            document.body.style.width = '100%';
-            document.body.style.height = '100%';
-            document.body.style.overflow = 'hidden';
+            
+            // Empêche le rebond élastique du body pour un feeling plus "app"
+            document.body.style.overflow = 'auto';
+            document.body.style.webkitOverflowScrolling = 'touch';
+            
+            // Fix pour les zones tactiles sur iOS
+            document.documentElement.style.webkitTapHighlightColor = 'transparent';
+            document.documentElement.style.webkitTouchCallout = 'none';
         })();
         """
-        return WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
-    }
-
-    private var mobileUserAgent: String {
-        let version = UIDevice.current.systemVersion.replacingOccurrences(of: ".", with: "_")
-        return "Mozilla/5.0 (iPhone; CPU iPhone OS \(version) like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1 Netic-iOS/1.0"
+        return WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
     }
 
     private let backgroundFixScript = """
     (function() {
-        function fixBg() {
-            var bg = window.getComputedStyle(document.body).backgroundColor;
-            if (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') {
-                var root = document.querySelector('#root, #__next, #app, main');
-                if (root) {
-                    var rootBg = window.getComputedStyle(root).backgroundColor;
-                    if (rootBg !== 'rgba(0, 0, 0, 0)' && rootBg !== 'transparent') {
-                        document.documentElement.style.backgroundColor = rootBg;
-                        document.body.style.backgroundColor = rootBg;
-                    }
-                }
-            }
-        }
-        fixBg();
-        setTimeout(fixBg, 300);
-        setTimeout(fixBg, 1000);
+        document.documentElement.style.backgroundColor = '#0d0d0d';
+        document.body.style.backgroundColor = '#0d0d0d';
         window.dispatchEvent(new Event('resize'));
     })();
     """
 }
 
 // MARK: - WKNavigationDelegate
+
+extension WebViewController: UIScrollViewDelegate {
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+        return nil
+    }
+}
 
 extension WebViewController: WKNavigationDelegate {
 
