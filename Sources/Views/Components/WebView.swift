@@ -44,20 +44,26 @@ final class WebViewController: UIViewController {
         config.mediaTypesRequiringUserActionForPlayback = []
         config.websiteDataStore = .default()
 
-        // Initialisation immédiate avec la taille de l'écran pour éviter le letterboxing
+        // Initialisation avec une frame pleine pour éviter tout calcul de marges par défaut
         webView = WKWebView(frame: UIScreen.main.bounds, configuration: config)
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.scrollView.delegate = self
         
-        // User Agent moderne
+        // User Agent forçant le mode mobile et identifiant l'app
         webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1 NeticApp/1.1"
 
         let bg = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
         webView.isOpaque = true
         webView.backgroundColor = bg
         webView.scrollView.backgroundColor = bg
+        
+        // DÉSACTIVE TOUT AJUSTEMENT AUTOMATIQUE : C'est la clé pour supprimer les barres noires
         webView.scrollView.contentInsetAdjustmentBehavior = .never
+        if #available(iOS 13.0, *) {
+            webView.scrollView.automaticallyAdjustsScrollIndicatorInsets = false
+        }
+        
         webView.scrollView.bounces = true
         
         if #available(iOS 16.4, *) {
@@ -70,6 +76,9 @@ final class WebViewController: UIViewController {
 
     private func setupConstraints() {
         view.addSubview(webView)
+        
+        // On utilise les contraintes sur la Superview (view) et non la Safe Area
+        // pour garantir que la WebView touche physiquement les bords de l'écran.
         NSLayoutConstraint.activate([
             webView.topAnchor.constraint(equalTo: view.topAnchor),
             webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -77,8 +86,7 @@ final class WebViewController: UIViewController {
             webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
         
-        // Force la WebView à ne pas redimensionner sa fenêtre lors de l'apparition du clavier
-        // Cela permet de garder le layout du site web stable
+        // Notification pour forcer le layout lors de l'apparition du clavier
         NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { _ in
             self.webView.setNeedsLayout()
         }
