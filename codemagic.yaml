@@ -20,13 +20,15 @@ workflows:
           echo "Dependencies installed"
       - name: Build iOS App
         script: |
-          # Build de l'archive .xcarchive
+          # Build de l'archive .xcarchive sans signature forcée (Codemagic s'en occupe)
           xcodebuild build \
             -project "Netic.xcodeproj" \
             -scheme "Netic" \
             -sdk iphoneos \
             -configuration Release \
             -archivePath $CM_BUILD_DIR/Netic.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
             archive
       - name: Export IPA
         script: |
