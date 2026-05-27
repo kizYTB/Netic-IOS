@@ -3,7 +3,7 @@ import Foundation
 class AppVersionManager {
     static let shared = AppVersionManager()
     
-    private let versionURL = URL(string: "https://app.neticai.fr/mobile/version.xml")!
+    private let versionURL = URL(string: "https://neticai.fr/mobile/version.xml")!
     
     func checkForUpdates(completion: @escaping (Bool, String?) -> Void) {
         URLSession.shared.dataTask(with: versionURL) { data, response, error in
