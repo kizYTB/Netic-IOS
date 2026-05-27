@@ -20,9 +20,10 @@ targets:
         CLANG_ENABLE_MODULES: YES
         SWIFT_VERSION: 5.0
         SDKROOT: iphoneos
-        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_ALLOWED: NO
         CODE_SIGNING_REQUIRED: NO
-        CODE_SIGNING_ALLOWED: YES
+        CODE_SIGN_IDENTITY: ""
+        PROVISIONING_PROFILE_SPECIFIER: ""
     info:
       path: Info.plist
       properties:

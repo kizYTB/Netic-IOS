@@ -18,27 +18,24 @@ workflows:
           # Si vous utilisez Swift Package Manager ou CocoaPods
           # xcodebuild -resolvePackageDependencies
           echo "Dependencies installed"
-      - name: Build iOS App
+      - name: Build iOS App for Simulator
         script: |
-          # Build de l'archive .xcarchive sans signature forcée (Codemagic s'en occupe)
+          # Build pour le simulateur (ne nécessite pas de certificat)
           xcodebuild build \
             -project "Netic.xcodeproj" \
             -scheme "Netic" \
-            -sdk iphoneos \
-            -configuration Release \
-            -archivePath $CM_BUILD_DIR/Netic.xcarchive \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath $CM_BUILD_DIR/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            archive
-      - name: Export IPA
+            CODE_SIGNING_REQUIRED=NO
+      - name: Package Simulator App
         script: |
-          # Export de l'archive vers un fichier .ipa
-          xcodebuild -exportArchive \
-            -archivePath $CM_BUILD_DIR/Netic.xcarchive \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath $CM_EXPORT_DIR
+          # On compresse l'application .app pour qu'elle soit téléchargeable
+          cd $CM_BUILD_DIR/DerivedData/Build/Products/Debug-iphonesimulator
+          zip -r $CM_EXPORT_DIR/Netic-Simulator.zip Netic.app
     artifacts:
-      - $CM_EXPORT_DIR/*.ipa
+      - $CM_EXPORT_DIR/*.zip
     publishing:
       email:
         recipients:
