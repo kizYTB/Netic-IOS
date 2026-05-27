@@ -19,8 +19,12 @@ struct ContentView: View {
                 OfflineView()
             }
             
-            // Le splash screen est maintenant géré directement dans l'App Shell HTML
-            // pour une transition fluide sans "flash" blanc ou noir.
+            // Splash/Loading Screen
+            if state.isLoading && networkMonitor.isConnected && !isAuthPage {
+                LoadingView(message: loadingMessage)
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
         }
         .preferredColorScheme(.dark)
         .onAppear {

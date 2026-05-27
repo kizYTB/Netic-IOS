@@ -35,16 +35,12 @@ struct WebView: UIViewRepresentable {
         webView.backgroundColor = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
         
         // Custom UserAgent for Netic detection
-        webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1 netic-ios electron"
+        // On force netic-ios pour charger l'interface mobile uniquement
+        webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1 netic-ios"
         
-        // Chargement du Shell HTML local au lieu de l'URL directe
-        if let indexURL = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "www") {
-            webView.loadFileURL(indexURL, allowingReadAccessTo: indexURL.deletingLastPathComponent().deletingLastPathComponent())
-        } else {
-            // Fallback si le fichier local manque
-            let request = URLRequest(url: url)
-            webView.load(request)
-        }
+        // On charge directement l'URL du chat
+        let request = URLRequest(url: url)
+        webView.load(request)
         
         return webView
     }
@@ -96,33 +92,18 @@ struct WebView: UIViewRepresentable {
                 self.parent.state.currentURL = webView.url
             }
             
-            // Inject variables into window for useMobileApp and useDesktop compatibility
+            // Bridge mobile standard (AndroidBridge pour compatibilité hooks)
             let script = """
-            // Bridge pour useMobileApp
             window.AndroidBridge = {
                 getAppVersion: function() { return '\(self.parent.state.appVersion)'; },
                 checkForUpdates: function() { window.webkit.messageHandlers.netic.postMessage({type: 'checkForUpdates'}); },
-                postMessage: function(msg) { 
-                    try {
-                        const data = JSON.parse(msg);
-                        window.webkit.messageHandlers.netic.postMessage(data);
-                    } catch(e) {
-                        window.webkit.messageHandlers.netic.postMessage({type: 'log', data: msg});
-                    }
-                }
+                logout: function() { window.webkit.messageHandlers.netic.postMessage({type: 'logout'}); }
             };
             
-            // Bridge pour useDesktop (compatibilité déconnexion)
-            window.electronAPI = {
-                isDesktop: true, // On fait croire que c'est desktop pour activer le bouton logout native
-                logout: function() { 
-                    window.webkit.messageHandlers.netic.postMessage({type: 'logout'}); 
-                },
-                getVersion: function() { return Promise.resolve('\(self.parent.state.appVersion)'); }
-            };
+            // On s'assure que window.electronAPI n'existe pas pour ne pas charger l'interface desktop
+            delete window.electronAPI;
             
-            // Dispatch event pour signaler que le bridge est prêt
-            window.dispatchEvent(new CustomEvent('netic-bridge-ready'));
+            window.dispatchEvent(new CustomEvent('netic-mobile-ready'));
             """
             webView.evaluateJavaScript(script)
         }
