@@ -5,8 +5,8 @@ struct ContentView: View {
     @StateObject private var networkMonitor = NetworkMonitor()
     
     // The main URL of the Netic application
-    // Corrected: Using neticai.fr as the main production domain
-    private let appURL = URL(string: "https://neticai.fr")!
+    // Corrected: Loading the chat directly as requested
+    private let appURL = URL(string: "https://neticai.fr/chat")!
 
     var body: some View {
         ZStack {
@@ -21,7 +21,7 @@ struct ContentView: View {
             
             // Splash/Loading Screen
             if state.isLoading && networkMonitor.isConnected {
-                LoadingView()
+                LoadingView(message: loadingMessage)
                     .transition(.opacity)
                     .zIndex(1)
             }
@@ -35,6 +35,18 @@ struct ContentView: View {
                 }
             }
         }
+    }
+    
+    private var loadingMessage: String {
+        guard let url = state.currentURL?.absoluteString else {
+            return "Initialisation de votre assistant..."
+        }
+        
+        if url.contains("jtheberg.cloud") || url.contains("login") || url.contains("auth") {
+            return "Connexion sécurisée à Jtheberg..."
+        }
+        
+        return "Chargement de votre assistant..."
     }
 }
 

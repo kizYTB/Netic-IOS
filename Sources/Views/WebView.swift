@@ -49,6 +49,28 @@ struct WebView: UIViewRepresentable {
             self.parent = parent
         }
 
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            if let url = navigationAction.request.url {
+                let urlString = url.absoluteString
+                
+                // Autoriser les domaines d'authentification Jtheberg
+                if urlString.contains("jtheberg.cloud") || urlString.contains("oauth") {
+                    decisionHandler(.allow)
+                    return
+                }
+                
+                // Si le site essaie de rediriger vers la page d'accueil (hors login/auth)
+                // on force le maintien sur /chat
+                if urlString == "https://neticai.fr/" || urlString == "https://neticai.fr" {
+                    decisionHandler(.cancel)
+                    let chatRequest = URLRequest(url: URL(string: "https://neticai.fr/chat")!)
+                    webView.load(chatRequest)
+                    return
+                }
+            }
+            decisionHandler(.allow)
+        }
+
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             DispatchQueue.main.async {
                 self.parent.state.isLoading = true
@@ -94,7 +116,7 @@ struct WebView: UIViewRepresentable {
                 triggerHaptic(style: style)
                 
             case "logout":
-                clearCookies()
+                clearCookies(webView: message.webView)
                 
             case "checkForUpdates":
                 AppVersionManager.shared.checkForUpdates { hasUpdate, version in
@@ -124,11 +146,16 @@ struct WebView: UIViewRepresentable {
             }
         }
         
-        private func clearCookies() {
+        private func clearCookies(webView: WKWebView?) {
             let dataStore = WKWebsiteDataStore.default()
             dataStore.fetchDataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()) { records in
                 dataStore.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: records) {
                     print("Cookies and site data cleared")
+                    DispatchQueue.main.async {
+                        // Après la déconnexion, on recharge sur /chat qui redirigera vers /login
+                        let chatRequest = URLRequest(url: URL(string: "https://neticai.fr/chat")!)
+                        webView?.load(chatRequest)
+                    }
                 }
             }
         }

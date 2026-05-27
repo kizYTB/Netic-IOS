@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LoadingView: View {
     @State private var isAnimating = false
+    var message: String = "Initialisation de votre assistant..."
     
     var body: some View {
         ZStack {
@@ -33,9 +34,11 @@ struct LoadingView: View {
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                     
-                    Text("Initialisation de votre assistant...")
+                    Text(message)
                         .font(.system(size: 14))
                         .foregroundColor(.zinc400)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
                 }
             }
         }
