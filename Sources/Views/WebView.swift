@@ -53,14 +53,16 @@ struct WebView: UIViewRepresentable {
             if let url = navigationAction.request.url {
                 let urlString = url.absoluteString
                 
-                // Autoriser les domaines d'authentification Jtheberg
-                if urlString.contains("jtheberg.cloud") || urlString.contains("oauth") {
+                // Autoriser les domaines d'authentification Jtheberg et les callbacks
+                if urlString.contains("jtheberg.cloud") || 
+                   urlString.contains("oauth") || 
+                   urlString.contains("/api/auth/") {
                     decisionHandler(.allow)
                     return
                 }
                 
-                // Si le site essaie de rediriger vers la page d'accueil (hors login/auth)
-                // on force le maintien sur /chat
+                // Si le site essaie de rediriger vers la page d'accueil (root)
+                // on redirige proprement vers le chat
                 if urlString == "https://neticai.fr/" || urlString == "https://neticai.fr" {
                     decisionHandler(.cancel)
                     let chatRequest = URLRequest(url: URL(string: "https://neticai.fr/chat")!)
@@ -148,14 +150,18 @@ struct WebView: UIViewRepresentable {
         
         private func clearCookies(webView: WKWebView?) {
             let dataStore = WKWebsiteDataStore.default()
-            dataStore.fetchDataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()) { records in
-                dataStore.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: records) {
-                    print("Cookies and site data cleared")
-                    DispatchQueue.main.async {
-                        // Après la déconnexion, on recharge sur /chat qui redirigera vers /login
-                        let chatRequest = URLRequest(url: URL(string: "https://neticai.fr/chat")!)
-                        webView?.load(chatRequest)
-                    }
+            // Clear all types of data: cookies, cache, local storage, etc.
+            let dataTypes = WKWebsiteDataStore.allWebsiteDataTypes()
+            let dateFrom = Date(timeIntervalSince1970: 0)
+            
+            dataStore.removeData(ofTypes: dataTypes, modifiedSince: dateFrom) {
+                print("Full site data cleared (cookies, cache, storage)")
+                DispatchQueue.main.async {
+                    // On force un rechargement complet sur le chat
+                    // Le serveur redirigera vers le login car la session est vide
+                    let chatURL = URL(string: "https://neticai.fr/chat")!
+                    let request = URLRequest(url: chatURL, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData)
+                    webView?.load(request)
                 }
             }
         }

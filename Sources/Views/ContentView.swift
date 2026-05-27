@@ -20,7 +20,9 @@ struct ContentView: View {
             }
             
             // Splash/Loading Screen
-            if state.isLoading && networkMonitor.isConnected {
+            // On ne l'affiche que si on n'est pas sur une page d'authentification externe
+            // pour éviter de bloquer l'interface de Jtheberg
+            if state.isLoading && networkMonitor.isConnected && !isAuthPage {
                 LoadingView(message: loadingMessage)
                     .transition(.opacity)
                     .zIndex(1)
@@ -37,13 +39,18 @@ struct ContentView: View {
         }
     }
     
+    private var isAuthPage: Bool {
+        guard let url = state.currentURL?.absoluteString else { return false }
+        return url.contains("jtheberg.cloud") || url.contains("login") || url.contains("auth")
+    }
+    
     private var loadingMessage: String {
         guard let url = state.currentURL?.absoluteString else {
             return "Initialisation de votre assistant..."
         }
         
         if url.contains("jtheberg.cloud") || url.contains("login") || url.contains("auth") {
-            return "Connexion sécurisée à Jtheberg..."
+            return "Connexion sécurisée..."
         }
         
         return "Chargement de votre assistant..."
