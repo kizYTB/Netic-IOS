@@ -1,79 +1,40 @@
 workflows:
-  ios-build:
+  ios-workflow:
     name: Netic iOS Build
-    instance_type: mac_mini_m2
+    instance_type: mac_mini_m1
+    max_build_duration: 60
     environment:
       xcode: latest
-      groups:
-        - github key
-      vars:
-        GITHUB_REPO: "kizYTB/Netic-IOS"
-        RELEASE_TAG: "latest-build"
+      cocoapods: default
     scripts:
-      - name: Install Node dependencies
+      - name: Install dependencies
         script: |
-          npm install
-      - name: Build iOS app (.ipa)
+          # Si vous utilisez Swift Package Manager ou CocoaPods
+          # xcodebuild -resolvePackageDependencies
+          echo "Dependencies installed"
+      - name: Build iOS App
         script: |
-          brew install xcodegen
-          xcodegen generate
-
-          # Archive avec logs détaillés
-          xcodebuild clean archive \
-            -project "NeticAI.xcodeproj" \
-            -scheme "NeticAI" \
-            -configuration Release \
+          # Build de l'archive .xcarchive
+          xcodebuild build \
+            -project "Netic.xcodeproj" \
+            -scheme "Netic" \
             -sdk iphoneos \
-            -archivePath "build/NeticAI.xcarchive" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            | tee build/xcodebuild_archive.log
-
-          # Vérification archive
-          if [ ! -d "build/NeticAI.xcarchive" ]; then
-            echo "ERREUR: L'archive Xcode n'existe pas !"
-            exit 1
-          fi
-
-          # Trouver le .app
-          APP_PATH=$(find "build/NeticAI.xcarchive" -name "NeticAI.app" -type d | head -n 1)
-          if [ -z "$APP_PATH" ]; then
-            echo "ERREUR: .app introuvable !"
-            exit 1
-          fi
-
-          # Packaging IPA
-          mkdir -p build/Payload
-          cp -r "$APP_PATH" build/Payload/
-          cd build
-          zip -r NeticAI.ipa Payload/
-          cd ..
-
-      - name: Publish GitHub Release
+            -configuration Release \
+            -archivePath $CM_BUILD_DIR/Netic.xcarchive \
+            archive
+      - name: Export IPA
         script: |
-          if [ -z "$GITHUB_TOKEN" ]; then exit 1; fi
-          
-          # Nettoyage release
-          RELEASE_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_REPO/releases/tags/$RELEASE_TAG" | grep '"id"' | head -1 | grep -o '[0-9]*')
-          if [ -n "$RELEASE_ID" ]; then
-            curl -s -X DELETE -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_REPO/releases/$RELEASE_ID"
-          fi
-          curl -s -X DELETE -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_REPO/git/refs/tags/$RELEASE_TAG"
-
-          # Création release
-          RELEASE=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" "https://api.github.com/repos/$GITHUB_REPO/releases" -d "{
-              \"tag_name\": \"$RELEASE_TAG\",
-              \"name\": \"Netic AI - Build $(date '+%d/%m/%Y %H:%M')\",
-              \"body\": \"Build automatique\",
-              \"draft\": false, \"prerelease\": false
-            }")
-
-          UPLOAD_URL=$(echo "$RELEASE" | grep -o '"upload_url": "[^"]*"' | grep -o 'https://[^{]*')
-          if [ -z "$UPLOAD_URL" ]; then exit 1; fi
-
-          # Upload IPA
-          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" "$UPLOAD_URL?name=NeticAI.ipa" --data-binary @build/NeticAI.ipa
-
+          # Export de l'archive vers un fichier .ipa
+          xcodebuild -exportArchive \
+            -archivePath $CM_BUILD_DIR/Netic.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath $CM_EXPORT_DIR
     artifacts:
-      - build/NeticAI.ipa
-      - build/xcodebuild_archive.log
+      - $CM_EXPORT_DIR/*.ipa
+    publishing:
+      email:
+        recipients:
+          - kylian@jtheberg.cloud # À adapter si besoin
+        notify:
+          success: true
+          failure: true

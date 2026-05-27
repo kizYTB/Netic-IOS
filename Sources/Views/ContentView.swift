@@ -1,32 +1,78 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var network = NetworkMonitor()
-    @StateObject private var webState = WebViewState()
-    @State private var webViewId = UUID()
-
-    private let url = URL(string: "https://neticai.fr/chat")!
+    @StateObject private var state = WebViewState()
+    @StateObject private var networkMonitor = NetworkMonitor()
+    
+    private let appURL = URL(string: "https://app.neticai.fr")!
 
     var body: some View {
         ZStack {
-            AppTheme.background
-                .ignoresSafeArea(.all)
-
-            WebView(url: url, webViewState: webState)
-                .id(webViewId)
-                .ignoresSafeArea(.all) // barres + clavier gérés dans UIKit directement
-
-            if webState.isLoading && network.isConnected {
-                LoadingView()
+            Color.black.edgesIgnoringSafeArea(.all)
+            
+            if networkMonitor.isConnected {
+                WebView(url: appURL, state: state)
+                    .edgesIgnoringSafeArea(.all)
+            } else {
+                OfflineView()
             }
-
-            if !network.isConnected {
-                OfflineView {
-                    webViewId = UUID()
+            
+            // Splash/Loading Screen
+            if state.isLoading && networkMonitor.isConnected {
+                LoadingView()
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+        }
+        .preferredColorScheme(.dark)
+        .onAppear {
+            // Initial check for updates on launch
+            AppVersionManager.shared.checkForUpdates { hasUpdate, version in
+                DispatchQueue.main.async {
+                    self.state.isUpdateAvailable = hasUpdate
                 }
             }
         }
-        .ignoresSafeArea(.all)
-        .preferredColorScheme(.dark)
+    }
+}
+
+struct OfflineView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 50))
+                .foregroundColor(.zinc400)
+            
+            Text("Pas de connexion")
+                .font(.headline)
+                .foregroundColor(.white)
+            
+            Text("Veuillez vérifier votre connexion internet pour continuer à utiliser Netic.")
+                .font(.subheadline)
+                .foregroundColor(.zinc400)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            
+            Button(action: {
+                // Potential retry logic
+            }) {
+                Text("Réessayer")
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 30)
+                    .padding(.vertical, 12)
+                    .background(Color.neticPrimary)
+                    .foregroundColor(.white)
+                    .cornerRadius(25)
+            }
+            .padding(.top, 10)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black)
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
     }
 }
