@@ -22,8 +22,8 @@ targets:
         SDKROOT: iphoneos
         CODE_SIGNING_ALLOWED: NO
         CODE_SIGNING_REQUIRED: NO
-        CODE_SIGN_IDENTITY: ""
-        PROVISIONING_PROFILE_SPECIFIER: ""
+        CODE_SIGN_IDENTITY: "-"
+        AD_HOC_CODE_SIGNING_ALLOWED: YES
     info:
       path: Info.plist
       properties:
