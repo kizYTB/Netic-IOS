@@ -9,7 +9,6 @@ targets:
     sources:
       - Sources
       - Resources
-      - Resources/www
     settings:
       base:
         INFOPLIST_FILE: Info.plist
