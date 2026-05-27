@@ -7,6 +7,12 @@ workflows:
       xcode: latest
       cocoapods: default
     scripts:
+      - name: Install XcodeGen
+        script: |
+          brew install xcodegen
+      - name: Generate Xcode Project
+        script: |
+          xcodegen generate
       - name: Install dependencies
         script: |
           # Si vous utilisez Swift Package Manager ou CocoaPods
