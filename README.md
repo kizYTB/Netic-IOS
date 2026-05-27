@@ -5,34 +5,23 @@ L'application est construite avec **SwiftUI** et utilise un **WKWebView** optimi
 
 ## Structure du projet
 
-- `Sources/App/NeticApp.swift` : Point d'entrée de l'application.
-- `Sources/Views/WebView.swift` : Wrapper SwiftUI pour WKWebView avec support du bridge JS.
-- `Sources/Views/ContentView.swift` : Vue principale avec écran de chargement.
-- `Info.plist` : Configuration des permissions (Caméra, Micro, Réseau).
+Ce projet utilise **XcodeGen** pour gérer le fichier `.xcodeproj`. Cela évite les conflits de fichiers et facilite l'intégration continue.
 
-## Installation et Compilation
+- `project.yml` : Configuration du projet (cibles, sources, permissions).
+- `Sources/` : Code source SwiftUI.
+- `Resources/` : Assets, icônes et logos.
 
-1. Ouvrez Xcode.
-2. Créez un nouveau projet : **File > New > Project...**
-3. Sélectionnez **iOS > App**.
-4. Nommez le projet `Netic`, Interface : **SwiftUI**, Language : **Swift**.
-5. Une fois le projet créé, remplacez les fichiers générés par ceux de ce répertoire :
-   - Remplacez `NeticApp.swift` par le nôtre.
-   - Ajoutez `WebView.swift`, `ContentView.swift`, `LoadingView.swift`.
-   - Copiez le dossier `Assets.xcassets` dans votre projet Xcode pour avoir les logos et icônes officiels.
-   - Configurez le `Bundle Identifier` sur `fr.neticai.app`.
-6. Dans l'onglet **General** de votre Target :
-   - Sous **App Icon and Launch Images**, assurez-vous que `AppIcon` est sélectionné.
-7. Dans les paramètres du projet (Target > Info), assurez-vous d'ajouter les clés de permission pour la Caméra et le Micro présentes dans notre `Info.plist`.
+## Installation et Compilation (Local sur Mac)
+
+Si vous voulez compiler le projet sur votre Mac :
+
+1. Installez XcodeGen : `brew install xcodegen`
+2. Générez le projet : `xcodegen generate`
+3. Ouvrez le fichier généré `Netic.xcodeproj` dans Xcode.
 
 ## Build Automatisé (Codemagic)
 
-Le fichier `codemagic.yaml` est présent à la racine pour automatiser la génération du fichier `.ipa`.
-
-1. Connectez votre dépôt GitHub à **Codemagic.io**.
-2. L'application sera automatiquement détectée.
-3. Configurez les variables d'environnement pour le **Code Signing** (Certificats et Profils de Provisioning Apple) dans l'interface Codemagic.
-4. Lancez le build via le workflow `ios-workflow`.
+Le workflow Codemagic est déjà configuré pour installer XcodeGen et générer le projet automatiquement avant le build. Vous n'avez rien à faire d'autre que de lancer le build sur l'interface Codemagic.
 
 ---
 
