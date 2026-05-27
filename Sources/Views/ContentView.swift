@@ -19,14 +19,8 @@ struct ContentView: View {
                 OfflineView()
             }
             
-            // Splash/Loading Screen
-            // On ne l'affiche que si on n'est pas sur une page d'authentification externe
-            // pour éviter de bloquer l'interface de Jtheberg
-            if state.isLoading && networkMonitor.isConnected && !isAuthPage {
-                LoadingView(message: loadingMessage)
-                    .transition(.opacity)
-                    .zIndex(1)
-            }
+            // Le splash screen est maintenant géré directement dans l'App Shell HTML
+            // pour une transition fluide sans "flash" blanc ou noir.
         }
         .preferredColorScheme(.dark)
         .onAppear {
@@ -40,8 +34,12 @@ struct ContentView: View {
     }
     
     private var isAuthPage: Bool {
-        guard let url = state.currentURL?.absoluteString else { return false }
-        return url.contains("jtheberg.cloud") || url.contains("login") || url.contains("auth")
+        guard let url = state.currentURL?.absoluteString.lowercased() else { return false }
+        // On considère comme page d'auth tout ce qui touche à Jtheberg, login ou callback
+        return url.contains("jtheberg.cloud") || 
+               url.contains("login") || 
+               url.contains("auth") || 
+               url.contains("oauth")
     }
     
     private var loadingMessage: String {

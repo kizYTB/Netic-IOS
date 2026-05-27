@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Netic AI</title>
+    <style>
+        :root {
+            --netic-bg: #050505;
+            --netic-primary: #0ea5e9;
+            --zinc-400: #a1a1aa;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--netic-bg);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        #app-container {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--netic-bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 24px;
+            animation: pulse 2s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; filter: blur(2px); }
+            50% { transform: scale(1.05); opacity: 1; filter: blur(0px); }
+            100% { transform: scale(0.95); opacity: 0.8; filter: blur(2px); }
+        }
+        .loader-text {
+            color: var(--zinc-400);
+            font-size: 14px;
+            text-align: center;
+            padding: 0 40px;
+        }
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <img src="../Assets.xcassets/Logo.imageset/logo.png" class="logo" alt="Netic Logo">
+        <div class="loader-text" id="loader-msg">Initialisation de Netic...</div>
+    </div>
+
+    <iframe id="app-container" src="about:blank" allow="camera; microphone; clipboard-read; clipboard-write;"></iframe>
+
+    <script>
+        const iframe = document.getElementById('app-container');
+        const loader = document.getElementById('loading-screen');
+        const loaderMsg = document.getElementById('loader-msg');
+        
+        const MAIN_URL = "https://neticai.fr/chat";
+        
+        // Configuration du bridge
+        window.AndroidBridge = {
+            getAppVersion: function() { return "1.0.0"; },
+            checkForUpdates: function() { 
+                if(window.webkit) window.webkit.messageHandlers.netic.postMessage({type: 'checkForUpdates'});
+            },
+            postMessage: function(msg) {
+                if(window.webkit) window.webkit.messageHandlers.netic.postMessage(JSON.parse(msg));
+            }
+        };
+
+        window.electronAPI = {
+            isDesktop: true,
+            logout: function() {
+                if(window.webkit) window.webkit.messageHandlers.netic.postMessage({type: 'logout'});
+            },
+            getVersion: function() { return Promise.resolve("1.0.0"); }
+        };
+
+        // Gestion du chargement
+        function loadApp() {
+            iframe.src = MAIN_URL;
+        }
+
+        iframe.onload = function() {
+            const currentURL = iframe.contentWindow.location.href;
+            
+            // Si on est sur une page d'auth, on cache le loader
+            if (currentURL.includes('jtheberg') || currentURL.includes('login') || currentURL.includes('auth')) {
+                loader.classList.add('hidden');
+            } else if (currentURL !== 'about:blank') {
+                // Pour les autres pages, on attend un peu
+                setTimeout(() => loader.classList.add('hidden'), 500);
+            }
+        };
+
+        // Intercepter les messages de l'iframe si besoin
+        window.addEventListener('message', function(event) {
+            // Relayer vers le natif si besoin
+        });
+
+        // Démarrage
+        loadApp();
+    </script>
+</body>
+</html>

@@ -17,6 +17,9 @@ struct WebView: UIViewRepresentable {
         controller.add(context.coordinator, name: "netic")
         configuration.userContentController = controller
         
+        // Autoriser le chargement de fichiers locaux
+        configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+        
         // Performance & Media
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
@@ -32,10 +35,16 @@ struct WebView: UIViewRepresentable {
         webView.backgroundColor = UIColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1)
         
         // Custom UserAgent for Netic detection
-        webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1 netic-ios"
+        webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1 netic-ios electron"
         
-        let request = URLRequest(url: url)
-        webView.load(request)
+        // Chargement du Shell HTML local au lieu de l'URL directe
+        if let indexURL = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "www") {
+            webView.loadFileURL(indexURL, allowingReadAccessTo: indexURL.deletingLastPathComponent().deletingLastPathComponent())
+        } else {
+            // Fallback si le fichier local manque
+            let request = URLRequest(url: url)
+            webView.load(request)
+        }
         
         return webView
     }
@@ -87,12 +96,33 @@ struct WebView: UIViewRepresentable {
                 self.parent.state.currentURL = webView.url
             }
             
-            // Inject variables into window for useMobileApp hook
+            // Inject variables into window for useMobileApp and useDesktop compatibility
             let script = """
+            // Bridge pour useMobileApp
             window.AndroidBridge = {
                 getAppVersion: function() { return '\(self.parent.state.appVersion)'; },
-                checkForUpdates: function() { window.webkit.messageHandlers.netic.postMessage({type: 'checkForUpdates'}); }
+                checkForUpdates: function() { window.webkit.messageHandlers.netic.postMessage({type: 'checkForUpdates'}); },
+                postMessage: function(msg) { 
+                    try {
+                        const data = JSON.parse(msg);
+                        window.webkit.messageHandlers.netic.postMessage(data);
+                    } catch(e) {
+                        window.webkit.messageHandlers.netic.postMessage({type: 'log', data: msg});
+                    }
+                }
             };
+            
+            // Bridge pour useDesktop (compatibilité déconnexion)
+            window.electronAPI = {
+                isDesktop: true, // On fait croire que c'est desktop pour activer le bouton logout native
+                logout: function() { 
+                    window.webkit.messageHandlers.netic.postMessage({type: 'logout'}); 
+                },
+                getVersion: function() { return Promise.resolve('\(self.parent.state.appVersion)'); }
+            };
+            
+            // Dispatch event pour signaler que le bridge est prêt
+            window.dispatchEvent(new CustomEvent('netic-bridge-ready'));
             """
             webView.evaluateJavaScript(script)
         }
@@ -150,15 +180,13 @@ struct WebView: UIViewRepresentable {
         
         private func clearCookies(webView: WKWebView?) {
             let dataStore = WKWebsiteDataStore.default()
-            // Clear all types of data: cookies, cache, local storage, etc.
             let dataTypes = WKWebsiteDataStore.allWebsiteDataTypes()
             let dateFrom = Date(timeIntervalSince1970: 0)
             
-            dataStore.removeData(ofTypes: dataTypes, modifiedSince: dateFrom) {
-                print("Full site data cleared (cookies, cache, storage)")
-                DispatchQueue.main.async {
-                    // On force un rechargement complet sur le chat
-                    // Le serveur redirigera vers le login car la session est vide
+            DispatchQueue.main.async {
+                dataStore.removeData(ofTypes: dataTypes, modifiedSince: dateFrom) {
+                    print("Full site data cleared (cookies, cache, storage)")
+                    // On force un rechargement complet
                     let chatURL = URL(string: "https://neticai.fr/chat")!
                     let request = URLRequest(url: chatURL, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData)
                     webView?.load(request)
